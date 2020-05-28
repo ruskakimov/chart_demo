@@ -93,59 +93,78 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (event) {
-        fingers += 1;
-      },
-      onPointerCancel: (event) {
-        fingers -= 1;
-      },
-      onPointerUp: (event) {
-        fingers -= 1;
-      },
-      child: GestureDetector(
-        onScaleStart: (details) {
-          lastFocalPoint = details.focalPoint;
-          prevIntervalWidth = intervalWidth;
-          if (rightEdgeTime > now) {
-            pxBetweenNowAndRightEdge = msToPx(rightEdgeTime - now);
-          }
-        },
-        onScaleUpdate: (ScaleUpdateDetails details) {
-          if (fingers == 1) {
-            final delta = details.focalPoint - lastFocalPoint;
-            lastFocalPoint = details.focalPoint;
-            setState(() {
-              rightEdgeTime -= pxToMs(delta.dx);
-              if (rightEdgeTime - now > pxToMs(maxPxBetweenNowAndRightEdge)) {
-                rightEdgeTime = now + pxToMs(maxPxBetweenNowAndRightEdge);
-              }
-            });
-          } else {
-            intervalWidth =
-                (prevIntervalWidth * details.horizontalScale).clamp(5.0, 100.0);
-            if (rightEdgeTime > now) {
-              rightEdgeTime = now + pxToMs(pxBetweenNowAndRightEdge);
-            }
-          }
-        },
-        onScaleEnd: (ScaleEndDetails details) {
-          // TODO: use velocity for panning innertia
-        },
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return CustomPaint(
-              size: Size.infinite,
-              painter: ChartPainter(
-                data: ticks,
-                intervalWidth: intervalWidth,
-                intervalDuration: intervalDuration,
-                rightEdgeTime: rightEdgeTime,
-              ),
-            );
+    return Stack(
+      children: <Widget>[
+        Listener(
+          onPointerDown: (event) {
+            fingers += 1;
           },
+          onPointerCancel: (event) {
+            fingers -= 1;
+          },
+          onPointerUp: (event) {
+            fingers -= 1;
+          },
+          child: GestureDetector(
+            onScaleStart: (details) {
+              lastFocalPoint = details.focalPoint;
+              prevIntervalWidth = intervalWidth;
+              if (rightEdgeTime > now) {
+                pxBetweenNowAndRightEdge = msToPx(rightEdgeTime - now);
+              }
+            },
+            onScaleUpdate: (ScaleUpdateDetails details) {
+              if (fingers == 1) {
+                final delta = details.focalPoint - lastFocalPoint;
+                lastFocalPoint = details.focalPoint;
+                setState(() {
+                  rightEdgeTime -= pxToMs(delta.dx);
+                  if (rightEdgeTime - now >
+                      pxToMs(maxPxBetweenNowAndRightEdge)) {
+                    rightEdgeTime = now + pxToMs(maxPxBetweenNowAndRightEdge);
+                  }
+                });
+              } else {
+                intervalWidth = (prevIntervalWidth * details.horizontalScale)
+                    .clamp(5.0, 100.0);
+                if (rightEdgeTime > now) {
+                  rightEdgeTime = now + pxToMs(pxBetweenNowAndRightEdge);
+                }
+              }
+            },
+            onScaleEnd: (ScaleEndDetails details) {
+              // TODO: use velocity for panning innertia
+            },
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return CustomPaint(
+                  size: Size.infinite,
+                  painter: ChartPainter(
+                    data: ticks,
+                    intervalWidth: intervalWidth,
+                    intervalDuration: intervalDuration,
+                    rightEdgeTime: rightEdgeTime,
+                  ),
+                );
+              },
+            ),
+          ),
         ),
-      ),
+        if (rightEdgeTime < now)
+          Positioned(
+            bottom: 40,
+            right: 20,
+            child: IconButton(
+              icon: Icon(
+                Icons.arrow_forward,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                rightEdgeTime = now + pxToMs(maxPxBetweenNowAndRightEdge);
+              },
+            ),
+          ),
+      ],
     );
   }
 }
@@ -213,6 +232,7 @@ class ChartPainter extends CustomPainter {
 
     final leftEdgeTime = calcLeftEdgeTime();
     updatePriceRange(leftEdgeTime);
+    if (priceMin == double.infinity) return;
 
     Path path = Path();
     final startIndex = max(
