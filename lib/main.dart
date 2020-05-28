@@ -199,19 +199,20 @@ class ChartPainter extends CustomPainter {
         .map((tick) => _toCanvasOffset(tick))
         .forEach((offset) => path.lineTo(offset.dx, offset.dy));
 
-    final lastTickProgress =
+    final lastTickAnimationProgress =
         ((DateTime.now().millisecondsSinceEpoch - data.last.time) / 200)
             .clamp(0, 1);
     final last = _toCanvasOffset(data.last);
     final prev = _toCanvasOffset(data[data.length - 2]);
-    final progressOffset = prev + (last - prev) * lastTickProgress.toDouble();
-    path.lineTo(progressOffset.dx, progressOffset.dy);
+    final lineEndOffset =
+        prev + (last - prev) * lastTickAnimationProgress.toDouble();
+    path.lineTo(lineEndOffset.dx, lineEndOffset.dy);
 
     canvas.drawPath(path, lineColor);
-    canvas.drawCircle(progressOffset, 3, Paint()..color = Colors.pink);
+    canvas.drawCircle(lineEndOffset, 3, Paint()..color = Colors.pink);
     canvas.drawLine(
-      progressOffset,
-      Offset(size.width, progressOffset.dy),
+      lineEndOffset,
+      Offset(size.width, lineEndOffset.dy),
       Paint()
         ..color = Colors.pink
         ..strokeWidth = 1,
