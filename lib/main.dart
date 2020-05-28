@@ -46,15 +46,18 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   Ticker ticker;
 
   int rightEdgeTime; // horizontal panning
-  double intervalWidth = 25; // scaling
-  double prevIntervalWidth = 25;
-  int fingers = 0;
   Offset lastFocalPoint;
+
+  double intervalWidth = 25; // scaling
+  double prevIntervalWidth;
+  double pxBetweenNowAndRightEdge = 100;
+  double maxPxBetweenNowAndRightEdge = 150;
+  int fingers = 0;
 
   @override
   void initState() {
     super.initState();
-    rightEdgeTime = now + pixelsToMs(100);
+    rightEdgeTime = now + pxToMs(pxBetweenNowAndRightEdge);
     ticker = this.createTicker((elapsed) {
       setState(() {
         final prev = now;
@@ -76,8 +79,12 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     });
   }
 
-  int pixelsToMs(double px) {
+  int pxToMs(double px) {
     return (px / intervalWidth * intervalDuration).toInt();
+  }
+
+  double msToPx(int ms) {
+    return ms / intervalDuration * intervalWidth;
   }
 
   @override
@@ -95,21 +102,31 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       child: GestureDetector(
         onScaleStart: (details) {
           lastFocalPoint = details.focalPoint;
+          prevIntervalWidth = intervalWidth;
+          if (rightEdgeTime > now) {
+            pxBetweenNowAndRightEdge = msToPx(rightEdgeTime - now);
+          }
         },
         onScaleUpdate: (ScaleUpdateDetails details) {
           if (fingers == 1) {
             final delta = details.focalPoint - lastFocalPoint;
             lastFocalPoint = details.focalPoint;
             setState(() {
-              rightEdgeTime -= pixelsToMs(delta.dx);
+              rightEdgeTime -= pxToMs(delta.dx);
+              if (rightEdgeTime - now > pxToMs(maxPxBetweenNowAndRightEdge)) {
+                rightEdgeTime = now + pxToMs(maxPxBetweenNowAndRightEdge);
+              }
             });
           } else {
             intervalWidth =
                 (prevIntervalWidth * details.horizontalScale).clamp(5.0, 100.0);
+            if (rightEdgeTime > now) {
+              rightEdgeTime = now + pxToMs(pxBetweenNowAndRightEdge);
+            }
           }
         },
         onScaleEnd: (ScaleEndDetails details) {
-          prevIntervalWidth = intervalWidth;
+          // TODO: use velocity for panning innertia
         },
         child: LayoutBuilder(
           builder: (context, constraints) {
