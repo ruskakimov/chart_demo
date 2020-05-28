@@ -40,7 +40,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   final double intervalDuration = 1000;
 
   List<ChartTick> ticks = [
-    ChartTick(DateTime.now().millisecondsSinceEpoch - 2000, 50),
+    ChartTick(DateTime.now().millisecondsSinceEpoch - 2000, 40),
     ChartTick(DateTime.now().millisecondsSinceEpoch - 1000, 50),
   ];
   Ticker ticker;
@@ -51,7 +51,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double intervalWidth = 25; // scaling
   double prevIntervalWidth;
   double pxBetweenNowAndRightEdge = 100;
-  double maxPxBetweenNowAndRightEdge = 150;
+  double maxPxBetweenNowAndRightEdge = 100;
   int fingers = 0;
 
   @override
@@ -179,6 +179,24 @@ class ChartPainter extends CustomPainter {
     );
   }
 
+  int calcLeftEdgeTime() {
+    return rightEdgeTime -
+        (canvasSize.width / intervalWidth * intervalDuration).toInt();
+  }
+
+  void updatePriceRange(int leftEdgeTime) {
+    priceMin = double.infinity;
+    priceMax = double.negativeInfinity;
+    data.where((tick) {
+      return tick.time <= rightEdgeTime && tick.time >= leftEdgeTime;
+    }).forEach((tick) {
+      priceMin = min(priceMin, tick.price);
+      priceMax = max(priceMax, tick.price);
+    });
+    priceMin -= 10;
+    priceMax += 10;
+  }
+
   double _timeToX(int time) {
     return canvasSize.width -
         (rightEdgeTime - time) / intervalDuration * intervalWidth;
@@ -193,15 +211,21 @@ class ChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvasSize = size;
 
+    final leftEdgeTime = calcLeftEdgeTime();
+    updatePriceRange(leftEdgeTime);
+
     Path path = Path();
+    final startIndex = max(
+      0,
+      data.indexWhere((tick) => tick.time >= leftEdgeTime) - 3,
+    );
 
     final first = _toCanvasOffset(data.first);
     path.moveTo(first.dx, first.dy);
-    data
-        .skip(1)
-        .take(data.length - 2)
-        .map((tick) => _toCanvasOffset(tick))
-        .forEach((offset) => path.lineTo(offset.dx, offset.dy));
+    for (var i = startIndex; i < data.length - 1; i++) {
+      final offset = _toCanvasOffset(data[i]);
+      path.lineTo(offset.dx, offset.dy);
+    }
 
     final lastTickAnimationProgress =
         ((DateTime.now().millisecondsSinceEpoch - data.last.time) / 200)
