@@ -38,24 +38,30 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   static final rng = Random();
   int now = DateTime.now().millisecondsSinceEpoch;
   final double intervalDuration = 1000;
-  double intervalWidth = 25;
-  double prevIntervalWidth = 25;
-  double nowOffset = 100;
+
   List<ChartTick> ticks = [
     ChartTick(DateTime.now().millisecondsSinceEpoch - 2000, 50),
     ChartTick(DateTime.now().millisecondsSinceEpoch - 1000, 50),
   ];
   Ticker ticker;
 
+  int rightEdgeTime; // horizontal panning
+  double intervalWidth = 25; // scaling
+  double prevIntervalWidth = 25;
   int fingers = 0;
   Offset lastFocalPoint;
 
   @override
   void initState() {
     super.initState();
+    rightEdgeTime = now + pixelsToMs(100);
     ticker = this.createTicker((elapsed) {
       setState(() {
+        final prev = now;
         now = DateTime.now().millisecondsSinceEpoch;
+        if (rightEdgeTime > prev) {
+          rightEdgeTime += now - prev;
+        }
       });
     });
     ticker.start();
@@ -68,6 +74,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         ));
       });
     });
+  }
+
+  int pixelsToMs(double px) {
+    return (px / intervalWidth * intervalDuration).toInt();
   }
 
   @override
@@ -84,7 +94,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       },
       child: GestureDetector(
         onScaleStart: (details) {
-          print(details);
           lastFocalPoint = details.focalPoint;
         },
         onScaleUpdate: (ScaleUpdateDetails details) {
@@ -92,7 +101,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             final delta = details.focalPoint - lastFocalPoint;
             lastFocalPoint = details.focalPoint;
             setState(() {
-              nowOffset -= delta.dx;
+              rightEdgeTime -= pixelsToMs(delta.dx);
             });
           } else {
             intervalWidth =
@@ -100,8 +109,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           }
         },
         onScaleEnd: (ScaleEndDetails details) {
-          print(details);
-          print(fingers);
           prevIntervalWidth = intervalWidth;
         },
         child: LayoutBuilder(
@@ -112,7 +119,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 data: ticks,
                 intervalWidth: intervalWidth,
                 intervalDuration: intervalDuration,
-                rightEdgeTime: now + (nowOffset / intervalWidth * 1000).toInt(),
+                rightEdgeTime: rightEdgeTime,
               ),
             );
           },
@@ -191,11 +198,6 @@ class ChartPainter extends CustomPainter {
       Paint()
         ..color = Colors.pink
         ..strokeWidth = 1,
-    );
-    canvas.drawRect(
-      Rect.fromLTRB(size.width - 60, progressOffset.dy - 10, size.width,
-          progressOffset.dy + 10),
-      Paint()..color = Colors.pink,
     );
   }
 
