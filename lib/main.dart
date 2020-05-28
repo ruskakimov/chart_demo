@@ -70,10 +70,14 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     ticker.start();
 
     Timer.periodic(Duration(seconds: 1), (timer) {
+      double newPrice = ticks.last.price;
+      if (rng.nextBool()) {
+        newPrice += rng.nextDouble() * 20 - 10;
+      }
       setState(() {
         ticks.add(ChartTick(
           DateTime.now().millisecondsSinceEpoch,
-          rng.nextDouble() * 100,
+          newPrice,
         ));
       });
     });
