@@ -37,6 +37,7 @@ class Chart extends StatefulWidget {
 class _ChartState extends State<Chart> with TickerProviderStateMixin {
   static final rng = Random();
   int now = DateTime.now().millisecondsSinceEpoch;
+  final double intervalDuration = 1000;
   double intervalWidth = 25;
   double prevIntervalWidth = 25;
   double nowOffset = 100;
@@ -45,7 +46,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     ChartTick(DateTime.now().millisecondsSinceEpoch - 1000, 50),
   ];
   Ticker ticker;
-  int lastTickArrivedTimestamp;
 
   int fingers = 0;
   Offset lastFocalPoint;
@@ -53,7 +53,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    lastTickArrivedTimestamp = ticks.last.time;
     ticker = this.createTicker((elapsed) {
       setState(() {
         now = DateTime.now().millisecondsSinceEpoch;
@@ -63,9 +62,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
     Timer.periodic(Duration(seconds: 1), (timer) {
       setState(() {
-        lastTickArrivedTimestamp = DateTime.now().millisecondsSinceEpoch;
         ticks.add(ChartTick(
-          lastTickArrivedTimestamp,
+          DateTime.now().millisecondsSinceEpoch,
           rng.nextDouble() * 100,
         ));
       });
@@ -111,12 +109,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             return CustomPaint(
               size: Size.infinite,
               painter: ChartPainter(
-                nowOffset: nowOffset,
-                intervalWidth: intervalWidth,
                 data: ticks,
-                // TODO: pass right edge timestamp instead, so you can look at old section of the chart without it scrolling past you
-                now: now,
-                lastTick: lastTickArrivedTimestamp,
+                intervalWidth: intervalWidth,
+                intervalDuration: intervalDuration,
+                rightEdgeTime: now + (nowOffset / intervalWidth * 1000).toInt(),
               ),
             );
           },
@@ -128,11 +124,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
 class ChartPainter extends CustomPainter {
   ChartPainter({
-    this.intervalWidth,
     this.data,
-    this.now,
-    this.nowOffset,
-    this.lastTick,
+    this.intervalWidth,
+    this.intervalDuration,
+    this.rightEdgeTime,
   });
 
   static final lineColor = Paint()
@@ -142,11 +137,9 @@ class ChartPainter extends CustomPainter {
 
   final List<ChartTick> data;
   final double intervalWidth;
-  final double nowOffset;
-  final int now;
-  final int lastTick;
+  final double intervalDuration;
+  final int rightEdgeTime;
 
-  final int intervalDuration = 1000;
   Size canvasSize;
   double priceMin = 0;
   double priceMax = 100;
@@ -159,8 +152,8 @@ class ChartPainter extends CustomPainter {
   }
 
   double _timeToX(int time) {
-    final nowX = canvasSize.width - nowOffset;
-    return nowX - (now - time) / intervalDuration * intervalWidth;
+    return canvasSize.width -
+        (rightEdgeTime - time) / intervalDuration * intervalWidth;
   }
 
   double _priceToY(double price) {
@@ -182,17 +175,13 @@ class ChartPainter extends CustomPainter {
         .map((tick) => _toCanvasOffset(tick))
         .forEach((offset) => path.lineTo(offset.dx, offset.dy));
 
-    final lastTickProgress = ((now - lastTick) / 200).clamp(0, 1);
+    final lastTickProgress =
+        ((DateTime.now().millisecondsSinceEpoch - data.last.time) / 200)
+            .clamp(0, 1);
     final last = _toCanvasOffset(data.last);
     final prev = _toCanvasOffset(data[data.length - 2]);
     final progressOffset = prev + (last - prev) * lastTickProgress.toDouble();
     path.lineTo(progressOffset.dx, progressOffset.dy);
-
-    canvas.drawLine(
-      Offset(_timeToX(now), 0),
-      Offset(_timeToX(now), size.height),
-      Paint()..color = Colors.yellow,
-    );
 
     canvas.drawPath(path, lineColor);
     canvas.drawCircle(progressOffset, 3, Paint()..color = Colors.pink);
