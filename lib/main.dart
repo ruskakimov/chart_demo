@@ -54,6 +54,12 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double _prevIntervalWidth;
   double currentTickOffset = 100;
 
+  double quoteMin = 30;
+  double quoteMax = 60;
+  double quoteMinTarget = 30;
+  double quoteMaxTarget = 60;
+  int quoteAnimationStartEpoch;
+
   @override
   void initState() {
     super.initState();
@@ -64,9 +70,11 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       setState(() {
         final prevNowEpoch = nowEpoch;
         nowEpoch = DateTime.now().millisecondsSinceEpoch;
+        final elapsedMs = nowEpoch - prevNowEpoch;
         if (rightEdgeEpoch > prevNowEpoch) {
-          rightEdgeEpoch += nowEpoch - prevNowEpoch;
+          rightEdgeEpoch += elapsedMs; // autopanning
         }
+        animateQuoteRange(elapsedMs);
       });
     });
     ticker.start();
@@ -84,6 +92,42 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         ));
       });
     });
+  }
+
+  void animateQuoteRange(int elapsedMs) {
+    if (quoteAnimationStartEpoch == null) return;
+
+    final remainingAnimationTime = 200 - (nowEpoch - quoteAnimationStartEpoch);
+
+    if (remainingAnimationTime <= 0) return;
+
+    final quoteMinSpeed = (quoteMinTarget - quoteMin) / remainingAnimationTime;
+    final quoteMaxSpeed = (quoteMaxTarget - quoteMax) / remainingAnimationTime;
+
+    quoteMin += quoteMinSpeed * elapsedMs;
+    quoteMax += quoteMaxSpeed * elapsedMs;
+  }
+
+  void recalculateTargetQuoteRange(double chartWidth) {
+    final leftEdgeEpoch = rightEdgeEpoch - pxToMs(chartWidth);
+    var newQuoteMin = double.infinity;
+    var newQuoteMax = double.negativeInfinity;
+    ticks.where((tick) {
+      return tick.epoch <= rightEdgeEpoch && tick.epoch >= leftEdgeEpoch;
+    }).forEach((tick) {
+      newQuoteMin = min(newQuoteMin, tick.quote);
+      newQuoteMax = max(newQuoteMax, tick.quote);
+    });
+    newQuoteMin -= 10;
+    newQuoteMax += 10;
+    if (newQuoteMin != quoteMinTarget) {
+      quoteMinTarget = newQuoteMin;
+      quoteAnimationStartEpoch = nowEpoch;
+    }
+    if (newQuoteMax != quoteMaxTarget) {
+      quoteMaxTarget = newQuoteMax;
+      quoteAnimationStartEpoch = nowEpoch;
+    }
   }
 
   int pxToMs(double px) {
@@ -129,15 +173,21 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           onScaleOrPanEnd: (details) {
             // TODO: Use velocity for panning innertia.
           },
-          child: CustomPaint(
-            size: Size.infinite,
-            painter: ChartPainter(
-              data: ticks,
-              intervalWidth: intervalWidth,
-              intervalDuration: intervalDuration,
-              rightEdgeEpoch: rightEdgeEpoch,
-            ),
-          ),
+          child: LayoutBuilder(builder: (context, constraints) {
+            recalculateTargetQuoteRange(constraints.maxWidth);
+
+            return CustomPaint(
+              size: Size.infinite,
+              painter: ChartPainter(
+                data: ticks,
+                intervalWidth: intervalWidth,
+                intervalDuration: intervalDuration,
+                rightEdgeEpoch: rightEdgeEpoch,
+                quoteMin: quoteMin,
+                quoteMax: quoteMax,
+              ),
+            );
+          }),
         ),
         if (rightEdgeEpoch < nowEpoch) _buildScrollForwardButton(),
       ],
@@ -167,6 +217,8 @@ class ChartPainter extends CustomPainter {
     this.intervalWidth,
     this.intervalDuration,
     this.rightEdgeEpoch,
+    this.quoteMin,
+    this.quoteMax,
   });
 
   static final lineColor = Paint()
@@ -178,63 +230,36 @@ class ChartPainter extends CustomPainter {
   final double intervalWidth;
   final int intervalDuration;
   final int rightEdgeEpoch;
+  final double quoteMin;
+  final double quoteMax;
 
   Size canvasSize;
-  double quoteMin;
-  double quoteMax;
 
   Offset _toCanvasOffset(Tick tick) {
     return Offset(
-      _timeToX(tick.epoch),
-      _priceToY(tick.quote),
+      _epochToX(tick.epoch),
+      _quoteToY(tick.quote),
     );
   }
 
-  int calcLeftEdgeTime() {
-    return rightEdgeEpoch -
-        (canvasSize.width / intervalWidth * intervalDuration).toInt();
-  }
-
-  void updateQuoteRange(int leftEdgeEpoch) {
-    quoteMin = double.infinity;
-    quoteMax = double.negativeInfinity;
-    data.where((tick) {
-      return tick.epoch <= rightEdgeEpoch && tick.epoch >= leftEdgeEpoch;
-    }).forEach((tick) {
-      quoteMin = min(quoteMin, tick.quote);
-      quoteMax = max(quoteMax, tick.quote);
-    });
-    quoteMin -= 10;
-    quoteMax += 10;
-  }
-
-  double _timeToX(int time) {
+  double _epochToX(int epoch) {
     return canvasSize.width -
-        (rightEdgeEpoch - time) / intervalDuration * intervalWidth;
+        (rightEdgeEpoch - epoch) / intervalDuration * intervalWidth;
   }
 
-  double _priceToY(double price) {
+  double _quoteToY(double quote) {
     return canvasSize.height -
-        (price - quoteMin) / (quoteMax - quoteMin) * canvasSize.height;
+        (quote - quoteMin) / (quoteMax - quoteMin) * canvasSize.height;
   }
 
   @override
   void paint(Canvas canvas, Size size) {
     canvasSize = size;
 
-    final leftEdgeEpoch = calcLeftEdgeTime();
-    updateQuoteRange(leftEdgeEpoch);
-    if (quoteMin == double.infinity) return;
-
-    final startIndex = max(
-      0,
-      data.indexWhere((tick) => tick.epoch >= leftEdgeEpoch) - 3,
-    );
-
     final first = _toCanvasOffset(data.first);
     Path path = Path();
     path.moveTo(first.dx, first.dy);
-    for (var i = startIndex; i < data.length - 1; i++) {
+    for (var i = 1; i < data.length - 1; i++) {
       final offset = _toCanvasOffset(data[i]);
       path.lineTo(offset.dx, offset.dy);
     }
