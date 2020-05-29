@@ -119,7 +119,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           onScaleUpdate: (details) {
             setState(() {
               intervalWidth = (_prevIntervalWidth * details.horizontalScale)
-                  .clamp(5.0, 100.0);
+                  .clamp(3.0, 50.0);
 
               if (rightEdgeEpoch > nowEpoch) {
                 rightEdgeEpoch = nowEpoch + pxToMs(currentTickOffset);
