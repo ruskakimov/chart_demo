@@ -38,32 +38,34 @@ class Chart extends StatefulWidget {
 
 class _ChartState extends State<Chart> with TickerProviderStateMixin {
   static final rng = Random();
-  int nowEpoch = DateTime.now().millisecondsSinceEpoch; // epoch
-  final int intervalDuration = 1000; // ms duration
+  Ticker ticker;
+
+  final int intervalDuration = 1000;
+  final double maxCurrentTickOffset = 150;
 
   List<Tick> ticks = [
     Tick(DateTime.now().millisecondsSinceEpoch - 2000, 40),
     Tick(DateTime.now().millisecondsSinceEpoch - 1000, 50),
   ];
-  Ticker ticker;
 
-  int rightEdgeEpoch; // epoch
-
-  double intervalWidth = 25; // px
-  double _prevIntervalWidth; // px
-  double pxBetweenNowAndRightEdge = 100; // px
-  double maxPxBetweenNowAndRightEdge = 150; // px
+  int nowEpoch;
+  int rightEdgeEpoch; // for panning
+  double intervalWidth = 25; // for scaling
+  double _prevIntervalWidth;
+  double currentTickOffset = 100;
 
   @override
   void initState() {
     super.initState();
-    rightEdgeEpoch = nowEpoch + pxToMs(pxBetweenNowAndRightEdge);
+    nowEpoch = DateTime.now().millisecondsSinceEpoch;
+    rightEdgeEpoch = nowEpoch + pxToMs(currentTickOffset);
+
     ticker = this.createTicker((elapsed) {
       setState(() {
-        final prev = nowEpoch;
+        final prevNowEpoch = nowEpoch;
         nowEpoch = DateTime.now().millisecondsSinceEpoch;
-        if (rightEdgeEpoch > prev) {
-          rightEdgeEpoch += nowEpoch - prev;
+        if (rightEdgeEpoch > prevNowEpoch) {
+          rightEdgeEpoch += nowEpoch - prevNowEpoch;
         }
       });
     });
@@ -99,17 +101,17 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           onScaleOrPanStart: (details) {
             _prevIntervalWidth = intervalWidth;
             if (rightEdgeEpoch > nowEpoch) {
-              pxBetweenNowAndRightEdge = msToPx(rightEdgeEpoch - nowEpoch);
+              currentTickOffset = msToPx(rightEdgeEpoch - nowEpoch);
             }
           },
           onPanUpdate: (details) {
             setState(() {
               rightEdgeEpoch -= pxToMs(details.delta.dx);
-              final upperLimit = nowEpoch + pxToMs(maxPxBetweenNowAndRightEdge);
+              final upperLimit = nowEpoch + pxToMs(maxCurrentTickOffset);
               rightEdgeEpoch = rightEdgeEpoch.clamp(0, upperLimit);
 
               if (rightEdgeEpoch > nowEpoch) {
-                pxBetweenNowAndRightEdge = msToPx(rightEdgeEpoch - nowEpoch);
+                currentTickOffset = msToPx(rightEdgeEpoch - nowEpoch);
               }
             });
           },
@@ -119,7 +121,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                   .clamp(5.0, 100.0);
 
               if (rightEdgeEpoch > nowEpoch) {
-                rightEdgeEpoch = nowEpoch + pxToMs(pxBetweenNowAndRightEdge);
+                rightEdgeEpoch = nowEpoch + pxToMs(currentTickOffset);
               }
             });
           },
@@ -146,7 +148,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 color: Colors.white,
               ),
               onPressed: () {
-                rightEdgeEpoch = nowEpoch + pxToMs(maxPxBetweenNowAndRightEdge);
+                rightEdgeEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
               },
             ),
           ),
