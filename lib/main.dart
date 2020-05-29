@@ -71,6 +71,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     });
     ticker.start();
 
+    // Tick stream simulation.
     Timer.periodic(Duration(seconds: 1), (timer) {
       double newPrice = ticks.last.quote;
       if (rng.nextBool()) {
@@ -126,7 +127,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             });
           },
           onScaleOrPanEnd: (details) {
-            // TODO: use velocity for panning innertia
+            // TODO: Use velocity for panning innertia.
           },
           child: CustomPaint(
             size: Size.infinite,
@@ -134,25 +135,28 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
               data: ticks,
               intervalWidth: intervalWidth,
               intervalDuration: intervalDuration,
-              rightEdgeTime: rightEdgeEpoch,
+              rightEdgeEpoch: rightEdgeEpoch,
             ),
           ),
         ),
-        if (rightEdgeEpoch < nowEpoch)
-          Positioned(
-            bottom: 40,
-            right: 20,
-            child: IconButton(
-              icon: Icon(
-                Icons.arrow_forward,
-                color: Colors.white,
-              ),
-              onPressed: () {
-                rightEdgeEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
-              },
-            ),
-          ),
+        if (rightEdgeEpoch < nowEpoch) _buildScrollForwardButton(),
       ],
+    );
+  }
+
+  Widget _buildScrollForwardButton() {
+    return Positioned(
+      bottom: 40,
+      right: 20,
+      child: IconButton(
+        icon: Icon(
+          Icons.arrow_forward,
+          color: Colors.white,
+        ),
+        onPressed: () {
+          rightEdgeEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
+        },
+      ),
     );
   }
 }
@@ -162,7 +166,7 @@ class ChartPainter extends CustomPainter {
     this.data,
     this.intervalWidth,
     this.intervalDuration,
-    this.rightEdgeTime,
+    this.rightEdgeEpoch,
   });
 
   static final lineColor = Paint()
@@ -173,11 +177,11 @@ class ChartPainter extends CustomPainter {
   final List<Tick> data;
   final double intervalWidth;
   final int intervalDuration;
-  final int rightEdgeTime;
+  final int rightEdgeEpoch;
 
   Size canvasSize;
-  double quoteMin = 0;
-  double quoteMax = 100;
+  double quoteMin;
+  double quoteMax;
 
   Offset _toCanvasOffset(Tick tick) {
     return Offset(
@@ -187,15 +191,15 @@ class ChartPainter extends CustomPainter {
   }
 
   int calcLeftEdgeTime() {
-    return rightEdgeTime -
+    return rightEdgeEpoch -
         (canvasSize.width / intervalWidth * intervalDuration).toInt();
   }
 
-  void updatePriceRange(int leftEdgeTime) {
+  void updateQuoteRange(int leftEdgeEpoch) {
     quoteMin = double.infinity;
     quoteMax = double.negativeInfinity;
     data.where((tick) {
-      return tick.epoch <= rightEdgeTime && tick.epoch >= leftEdgeTime;
+      return tick.epoch <= rightEdgeEpoch && tick.epoch >= leftEdgeEpoch;
     }).forEach((tick) {
       quoteMin = min(quoteMin, tick.quote);
       quoteMax = max(quoteMax, tick.quote);
@@ -206,7 +210,7 @@ class ChartPainter extends CustomPainter {
 
   double _timeToX(int time) {
     return canvasSize.width -
-        (rightEdgeTime - time) / intervalDuration * intervalWidth;
+        (rightEdgeEpoch - time) / intervalDuration * intervalWidth;
   }
 
   double _priceToY(double price) {
@@ -218,17 +222,17 @@ class ChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvasSize = size;
 
-    final leftEdgeTime = calcLeftEdgeTime();
-    updatePriceRange(leftEdgeTime);
+    final leftEdgeEpoch = calcLeftEdgeTime();
+    updateQuoteRange(leftEdgeEpoch);
     if (quoteMin == double.infinity) return;
 
-    Path path = Path();
     final startIndex = max(
       0,
-      data.indexWhere((tick) => tick.epoch >= leftEdgeTime) - 3,
+      data.indexWhere((tick) => tick.epoch >= leftEdgeEpoch) - 3,
     );
 
     final first = _toCanvasOffset(data.first);
+    Path path = Path();
     path.moveTo(first.dx, first.dy);
     for (var i = startIndex; i < data.length - 1; i++) {
       final offset = _toCanvasOffset(data[i]);
@@ -240,15 +244,15 @@ class ChartPainter extends CustomPainter {
             .clamp(0, 1);
     final last = _toCanvasOffset(data.last);
     final prev = _toCanvasOffset(data[data.length - 2]);
-    final lineEndOffset =
+    final lastTickOffset =
         prev + (last - prev) * lastTickAnimationProgress.toDouble();
-    path.lineTo(lineEndOffset.dx, lineEndOffset.dy);
+    path.lineTo(lastTickOffset.dx, lastTickOffset.dy);
 
     canvas.drawPath(path, lineColor);
-    canvas.drawCircle(lineEndOffset, 3, Paint()..color = Colors.pink);
+    canvas.drawCircle(lastTickOffset, 3, Paint()..color = Colors.pink);
     canvas.drawLine(
-      lineEndOffset,
-      Offset(size.width, lineEndOffset.dy),
+      lastTickOffset,
+      Offset(size.width, lastTickOffset.dy),
       Paint()
         ..color = Colors.pink
         ..strokeWidth = 1,
