@@ -5,6 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'scale_and_pan_gesture_detector.dart';
+
 void main() {
   runApp(MyApp());
 }
@@ -36,46 +38,44 @@ class Chart extends StatefulWidget {
 
 class _ChartState extends State<Chart> with TickerProviderStateMixin {
   static final rng = Random();
-  int now = DateTime.now().millisecondsSinceEpoch;
-  final double intervalDuration = 1000;
+  int nowEpoch = DateTime.now().millisecondsSinceEpoch; // epoch
+  final int intervalDuration = 1000; // ms duration
 
-  List<ChartTick> ticks = [
-    ChartTick(DateTime.now().millisecondsSinceEpoch - 2000, 40),
-    ChartTick(DateTime.now().millisecondsSinceEpoch - 1000, 50),
+  List<Tick> ticks = [
+    Tick(DateTime.now().millisecondsSinceEpoch - 2000, 40),
+    Tick(DateTime.now().millisecondsSinceEpoch - 1000, 50),
   ];
   Ticker ticker;
 
-  int rightEdgeTime; // horizontal panning
-  Offset lastFocalPoint;
+  int rightEdgeEpoch; // epoch
 
-  double intervalWidth = 25; // scaling
-  double prevIntervalWidth;
-  double pxBetweenNowAndRightEdge = 100;
-  double maxPxBetweenNowAndRightEdge = 100;
-  int fingers = 0;
+  double intervalWidth = 25; // px
+  double _prevIntervalWidth; // px
+  double pxBetweenNowAndRightEdge = 100; // px
+  double maxPxBetweenNowAndRightEdge = 150; // px
 
   @override
   void initState() {
     super.initState();
-    rightEdgeTime = now + pxToMs(pxBetweenNowAndRightEdge);
+    rightEdgeEpoch = nowEpoch + pxToMs(pxBetweenNowAndRightEdge);
     ticker = this.createTicker((elapsed) {
       setState(() {
-        final prev = now;
-        now = DateTime.now().millisecondsSinceEpoch;
-        if (rightEdgeTime > prev) {
-          rightEdgeTime += now - prev;
+        final prev = nowEpoch;
+        nowEpoch = DateTime.now().millisecondsSinceEpoch;
+        if (rightEdgeEpoch > prev) {
+          rightEdgeEpoch += nowEpoch - prev;
         }
       });
     });
     ticker.start();
 
     Timer.periodic(Duration(seconds: 1), (timer) {
-      double newPrice = ticks.last.price;
+      double newPrice = ticks.last.quote;
       if (rng.nextBool()) {
         newPrice += rng.nextDouble() * 20 - 10;
       }
       setState(() {
-        ticks.add(ChartTick(
+        ticks.add(Tick(
           DateTime.now().millisecondsSinceEpoch,
           newPrice,
         ));
@@ -95,62 +95,48 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Stack(
       children: <Widget>[
-        Listener(
-          onPointerDown: (event) {
-            fingers += 1;
+        ScaleAndPanGestureDetector(
+          onScaleOrPanStart: (details) {
+            _prevIntervalWidth = intervalWidth;
+            if (rightEdgeEpoch > nowEpoch) {
+              pxBetweenNowAndRightEdge = msToPx(rightEdgeEpoch - nowEpoch);
+            }
           },
-          onPointerCancel: (event) {
-            fingers -= 1;
-          },
-          onPointerUp: (event) {
-            fingers -= 1;
-          },
-          child: GestureDetector(
-            onScaleStart: (details) {
-              lastFocalPoint = details.focalPoint;
-              prevIntervalWidth = intervalWidth;
-              if (rightEdgeTime > now) {
-                pxBetweenNowAndRightEdge = msToPx(rightEdgeTime - now);
+          onPanUpdate: (details) {
+            setState(() {
+              rightEdgeEpoch -= pxToMs(details.delta.dx);
+              final upperLimit = nowEpoch + pxToMs(maxPxBetweenNowAndRightEdge);
+              rightEdgeEpoch = rightEdgeEpoch.clamp(0, upperLimit);
+
+              if (rightEdgeEpoch > nowEpoch) {
+                pxBetweenNowAndRightEdge = msToPx(rightEdgeEpoch - nowEpoch);
               }
-            },
-            onScaleUpdate: (ScaleUpdateDetails details) {
-              if (fingers == 1) {
-                final delta = details.focalPoint - lastFocalPoint;
-                lastFocalPoint = details.focalPoint;
-                setState(() {
-                  rightEdgeTime -= pxToMs(delta.dx);
-                  if (rightEdgeTime - now >
-                      pxToMs(maxPxBetweenNowAndRightEdge)) {
-                    rightEdgeTime = now + pxToMs(maxPxBetweenNowAndRightEdge);
-                  }
-                });
-              } else {
-                intervalWidth = (prevIntervalWidth * details.horizontalScale)
-                    .clamp(5.0, 100.0);
-                if (rightEdgeTime > now) {
-                  rightEdgeTime = now + pxToMs(pxBetweenNowAndRightEdge);
-                }
+            });
+          },
+          onScaleUpdate: (details) {
+            setState(() {
+              intervalWidth = (_prevIntervalWidth * details.horizontalScale)
+                  .clamp(5.0, 100.0);
+
+              if (rightEdgeEpoch > nowEpoch) {
+                rightEdgeEpoch = nowEpoch + pxToMs(pxBetweenNowAndRightEdge);
               }
-            },
-            onScaleEnd: (ScaleEndDetails details) {
-              // TODO: use velocity for panning innertia
-            },
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return CustomPaint(
-                  size: Size.infinite,
-                  painter: ChartPainter(
-                    data: ticks,
-                    intervalWidth: intervalWidth,
-                    intervalDuration: intervalDuration,
-                    rightEdgeTime: rightEdgeTime,
-                  ),
-                );
-              },
+            });
+          },
+          onScaleOrPanEnd: (details) {
+            // TODO: use velocity for panning innertia
+          },
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: ChartPainter(
+              data: ticks,
+              intervalWidth: intervalWidth,
+              intervalDuration: intervalDuration,
+              rightEdgeTime: rightEdgeEpoch,
             ),
           ),
         ),
-        if (rightEdgeTime < now)
+        if (rightEdgeEpoch < nowEpoch)
           Positioned(
             bottom: 40,
             right: 20,
@@ -160,7 +146,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 color: Colors.white,
               ),
               onPressed: () {
-                rightEdgeTime = now + pxToMs(maxPxBetweenNowAndRightEdge);
+                rightEdgeEpoch = nowEpoch + pxToMs(maxPxBetweenNowAndRightEdge);
               },
             ),
           ),
@@ -182,19 +168,19 @@ class ChartPainter extends CustomPainter {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
 
-  final List<ChartTick> data;
+  final List<Tick> data;
   final double intervalWidth;
-  final double intervalDuration;
+  final int intervalDuration;
   final int rightEdgeTime;
 
   Size canvasSize;
-  double priceMin = 0;
-  double priceMax = 100;
+  double quoteMin = 0;
+  double quoteMax = 100;
 
-  Offset _toCanvasOffset(ChartTick tick) {
+  Offset _toCanvasOffset(Tick tick) {
     return Offset(
-      _timeToX(tick.time),
-      _priceToY(tick.price),
+      _timeToX(tick.epoch),
+      _priceToY(tick.quote),
     );
   }
 
@@ -204,16 +190,16 @@ class ChartPainter extends CustomPainter {
   }
 
   void updatePriceRange(int leftEdgeTime) {
-    priceMin = double.infinity;
-    priceMax = double.negativeInfinity;
+    quoteMin = double.infinity;
+    quoteMax = double.negativeInfinity;
     data.where((tick) {
-      return tick.time <= rightEdgeTime && tick.time >= leftEdgeTime;
+      return tick.epoch <= rightEdgeTime && tick.epoch >= leftEdgeTime;
     }).forEach((tick) {
-      priceMin = min(priceMin, tick.price);
-      priceMax = max(priceMax, tick.price);
+      quoteMin = min(quoteMin, tick.quote);
+      quoteMax = max(quoteMax, tick.quote);
     });
-    priceMin -= 10;
-    priceMax += 10;
+    quoteMin -= 10;
+    quoteMax += 10;
   }
 
   double _timeToX(int time) {
@@ -223,7 +209,7 @@ class ChartPainter extends CustomPainter {
 
   double _priceToY(double price) {
     return canvasSize.height -
-        (price - priceMin) / (priceMax - priceMin) * canvasSize.height;
+        (price - quoteMin) / (quoteMax - quoteMin) * canvasSize.height;
   }
 
   @override
@@ -232,12 +218,12 @@ class ChartPainter extends CustomPainter {
 
     final leftEdgeTime = calcLeftEdgeTime();
     updatePriceRange(leftEdgeTime);
-    if (priceMin == double.infinity) return;
+    if (quoteMin == double.infinity) return;
 
     Path path = Path();
     final startIndex = max(
       0,
-      data.indexWhere((tick) => tick.time >= leftEdgeTime) - 3,
+      data.indexWhere((tick) => tick.epoch >= leftEdgeTime) - 3,
     );
 
     final first = _toCanvasOffset(data.first);
@@ -248,7 +234,7 @@ class ChartPainter extends CustomPainter {
     }
 
     final lastTickAnimationProgress =
-        ((DateTime.now().millisecondsSinceEpoch - data.last.time) / 200)
+        ((DateTime.now().millisecondsSinceEpoch - data.last.epoch) / 200)
             .clamp(0, 1);
     final last = _toCanvasOffset(data.last);
     final prev = _toCanvasOffset(data[data.length - 2]);
@@ -274,9 +260,9 @@ class ChartPainter extends CustomPainter {
   bool shouldRebuildSemantics(ChartPainter oldDelegate) => false;
 }
 
-class ChartTick {
-  final int time;
-  final double price;
+class Tick {
+  final int epoch;
+  final double quote;
 
-  ChartTick(this.time, this.price);
+  Tick(this.epoch, this.quote);
 }
