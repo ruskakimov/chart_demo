@@ -83,7 +83,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           rightEdgeEpoch += elapsedMs; // autopanning
         }
         recalculateQuoteBoundTargets();
-        animatePanToCurrentTick(elapsedMs);
       });
     });
     ticker.start();
@@ -131,20 +130,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void animatePanToCurrentTick(int elapsedMs) {
-    if (panToCurrentAnimationStartEpoch == null) return;
-    final remainingAnimationTime =
-        300 - (nowEpoch - panToCurrentAnimationStartEpoch);
-    if (remainingAnimationTime <= 0) return;
-
-    final from = rightEdgeEpoch;
-    final to = nowEpoch + pxToMs(maxCurrentTickOffset) + remainingAnimationTime;
-
-    final panSpeed = (to - from) / remainingAnimationTime;
-
-    rightEdgeEpoch += (panSpeed * elapsedMs).ceil();
-  }
-
   void recalculateQuoteBoundTargets() {
     if (canvasWidth == null) return;
     final leftEdgeEpoch = rightEdgeEpoch - pxToMs(canvasWidth);
@@ -182,77 +167,53 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: <Widget>[
-        ScaleAndPanGestureDetector(
-          onScaleOrPanStart: (details) {
-            _prevIntervalWidth = intervalWidth;
-            if (rightEdgeEpoch > nowEpoch) {
-              currentTickOffset = msToPx(rightEdgeEpoch - nowEpoch);
-            }
-          },
-          onPanUpdate: (details) {
-            setState(() {
-              rightEdgeEpoch -= pxToMs(details.delta.dx);
-              final upperLimit = nowEpoch + pxToMs(maxCurrentTickOffset);
-              rightEdgeEpoch = rightEdgeEpoch.clamp(0, upperLimit);
+    return ScaleAndPanGestureDetector(
+      onScaleOrPanStart: (details) {
+        _prevIntervalWidth = intervalWidth;
+        if (rightEdgeEpoch > nowEpoch) {
+          currentTickOffset = msToPx(rightEdgeEpoch - nowEpoch);
+        }
+      },
+      onPanUpdate: (details) {
+        setState(() {
+          rightEdgeEpoch -= pxToMs(details.delta.dx);
+          final upperLimit = nowEpoch + pxToMs(maxCurrentTickOffset);
+          rightEdgeEpoch = rightEdgeEpoch.clamp(0, upperLimit);
 
-              if (rightEdgeEpoch > nowEpoch) {
-                currentTickOffset = msToPx(rightEdgeEpoch - nowEpoch);
-              }
-            });
-          },
-          onScaleUpdate: (details) {
-            setState(() {
-              intervalWidth =
-                  (_prevIntervalWidth * details.scale).clamp(3.0, 50.0);
+          if (rightEdgeEpoch > nowEpoch) {
+            currentTickOffset = msToPx(rightEdgeEpoch - nowEpoch);
+          }
+        });
+      },
+      onScaleUpdate: (details) {
+        setState(() {
+          intervalWidth = (_prevIntervalWidth * details.scale).clamp(3.0, 50.0);
 
-              if (rightEdgeEpoch > nowEpoch) {
-                rightEdgeEpoch = nowEpoch + pxToMs(currentTickOffset);
-              }
-            });
-          },
-          onScaleOrPanEnd: (details) {
-            // TODO: Use velocity for panning inertia.
-          },
-          child: LayoutBuilder(builder: (context, constraints) {
-            canvasWidth = constraints.maxWidth;
+          if (rightEdgeEpoch > nowEpoch) {
+            rightEdgeEpoch = nowEpoch + pxToMs(currentTickOffset);
+          }
+        });
+      },
+      onScaleOrPanEnd: (details) {
+        // TODO: Use velocity for panning inertia.
+      },
+      child: LayoutBuilder(builder: (context, constraints) {
+        canvasWidth = constraints.maxWidth;
 
-            return CustomPaint(
-              size: Size.infinite,
-              painter: ChartPainter(
-                data: ticks,
-                intervalWidth: intervalWidth,
-                intervalDuration: intervalDuration,
-                rightEdgeEpoch: rightEdgeEpoch,
-                topEdgeQuote: _topEdgeQuoteAnimationController.value,
-                bottomEdgeQuote: _bottomEdgeQuoteAnimationController.value,
-                lastTickAnimationProgress: _lastTickAnimation.value,
-              ),
-            );
-          }),
-        ),
-        if (rightEdgeEpoch < nowEpoch) _buildForwardButton(),
-      ],
+        return CustomPaint(
+          size: Size.infinite,
+          painter: ChartPainter(
+            data: ticks,
+            intervalWidth: intervalWidth,
+            intervalDuration: intervalDuration,
+            rightEdgeEpoch: rightEdgeEpoch,
+            topEdgeQuote: _topEdgeQuoteAnimationController.value,
+            bottomEdgeQuote: _bottomEdgeQuoteAnimationController.value,
+            lastTickAnimationProgress: _lastTickAnimation.value,
+          ),
+        );
+      }),
     );
-  }
-
-  Widget _buildForwardButton() {
-    return Positioned(
-      bottom: 40,
-      right: 20,
-      child: IconButton(
-        icon: Icon(
-          Icons.arrow_forward,
-          color: Colors.white,
-        ),
-        onPressed: _panToCurrentTick,
-      ),
-    );
-  }
-
-  void _panToCurrentTick() {
-    panToCurrentAnimationStartEpoch = nowEpoch;
   }
 }
 
@@ -268,7 +229,7 @@ class ChartPainter extends CustomPainter {
   });
 
   static final lineColor = Paint()
-    ..color = Colors.white70
+    ..color = Colors.white
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
 
