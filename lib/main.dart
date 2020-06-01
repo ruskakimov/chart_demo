@@ -61,12 +61,12 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   /// Quote range animation.
   double canvasWidth; // to determine the range of visible ticks
-  double topQuoteTarget = 60;
-  double bottomQuoteTarget = 30;
-  final quoteOffset = 10;
-  final quoteAnimationDuration = const Duration(milliseconds: 300);
-  AnimationController _topQuoteAnimationController;
-  AnimationController _bottomQuoteAnimationController;
+  double topEdgeQuoteTarget = 60;
+  double bottomEdgeQuoteTarget = 30;
+  final quotePadding = 10;
+  final quoteBoundsAnimationDuration = const Duration(milliseconds: 300);
+  AnimationController _topEdgeQuoteAnimationController;
+  AnimationController _bottomEdgeQuoteAnimationController;
 
   @override
   void initState() {
@@ -82,7 +82,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         if (rightEdgeEpoch > prevEpoch) {
           rightEdgeEpoch += elapsedMs; // autopanning
         }
-        recalculateQuoteTargets();
+        recalculateQuoteBoundTargets();
         animatePanToCurrentTick(elapsedMs);
       });
     });
@@ -97,15 +97,15 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       curve: Curves.easeOut,
     );
 
-    _topQuoteAnimationController = AnimationController.unbounded(
-      value: topQuoteTarget,
+    _topEdgeQuoteAnimationController = AnimationController.unbounded(
+      value: topEdgeQuoteTarget,
       vsync: this,
-      duration: quoteAnimationDuration,
+      duration: quoteBoundsAnimationDuration,
     );
-    _bottomQuoteAnimationController = AnimationController.unbounded(
-      value: bottomQuoteTarget,
+    _bottomEdgeQuoteAnimationController = AnimationController.unbounded(
+      value: bottomEdgeQuoteTarget,
       vsync: this,
-      duration: quoteAnimationDuration,
+      duration: quoteBoundsAnimationDuration,
     );
 
     // Tick stream simulation.
@@ -145,7 +145,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     rightEdgeEpoch += (panSpeed * elapsedMs).ceil();
   }
 
-  void recalculateQuoteTargets() {
+  void recalculateQuoteBoundTargets() {
     if (canvasWidth == null) return;
     final leftEdgeEpoch = rightEdgeEpoch - pxToMs(canvasWidth);
     final visibleTickQuotes = ticks
@@ -156,17 +156,17 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     final minQuote = visibleTickQuotes.reduce(min);
     final maxQuote = visibleTickQuotes.reduce(max);
 
-    if (minQuote - quoteOffset != bottomQuoteTarget) {
-      bottomQuoteTarget = minQuote - quoteOffset;
-      _bottomQuoteAnimationController.animateTo(
-        bottomQuoteTarget,
+    if (minQuote - quotePadding != bottomEdgeQuoteTarget) {
+      bottomEdgeQuoteTarget = minQuote - quotePadding;
+      _bottomEdgeQuoteAnimationController.animateTo(
+        bottomEdgeQuoteTarget,
         curve: Curves.easeOut,
       );
     }
-    if (maxQuote + quoteOffset != topQuoteTarget) {
-      topQuoteTarget = maxQuote + quoteOffset;
-      _topQuoteAnimationController.animateTo(
-        topQuoteTarget,
+    if (maxQuote + quotePadding != topEdgeQuoteTarget) {
+      topEdgeQuoteTarget = maxQuote + quotePadding;
+      _topEdgeQuoteAnimationController.animateTo(
+        topEdgeQuoteTarget,
         curve: Curves.easeOut,
       );
     }
@@ -225,9 +225,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 intervalWidth: intervalWidth,
                 intervalDuration: intervalDuration,
                 rightEdgeEpoch: rightEdgeEpoch,
-                topEdgeQuote: _topQuoteAnimationController.value,
-                bottomEdgeQuote: _bottomQuoteAnimationController.value,
-                lastTickProgress: _lastTickAnimation.value,
+                topEdgeQuote: _topEdgeQuoteAnimationController.value,
+                bottomEdgeQuote: _bottomEdgeQuoteAnimationController.value,
+                lastTickAnimationProgress: _lastTickAnimation.value,
               ),
             );
           }),
@@ -264,7 +264,7 @@ class ChartPainter extends CustomPainter {
     this.rightEdgeEpoch,
     this.bottomEdgeQuote,
     this.topEdgeQuote,
-    this.lastTickProgress,
+    this.lastTickAnimationProgress,
   });
 
   static final lineColor = Paint()
@@ -278,7 +278,7 @@ class ChartPainter extends CustomPainter {
   final int rightEdgeEpoch;
   final double bottomEdgeQuote;
   final double topEdgeQuote;
-  final double lastTickProgress;
+  final double lastTickAnimationProgress;
 
   Size canvasSize;
 
@@ -315,7 +315,7 @@ class ChartPainter extends CustomPainter {
 
     final last = _toCanvasOffset(data.last);
     final prev = _toCanvasOffset(data[data.length - 2]);
-    final lastTickOffset = prev + (last - prev) * lastTickProgress;
+    final lastTickOffset = prev + (last - prev) * lastTickAnimationProgress;
     path.lineTo(lastTickOffset.dx, lastTickOffset.dy);
     canvas.drawPath(path, lineColor);
 
