@@ -158,7 +158,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
     if (minQuote - quoteOffset != bottomQuoteTarget) {
       bottomQuoteTarget = minQuote - quoteOffset;
-      _bottomQuoteAnimationController.stop();
       _bottomQuoteAnimationController.animateTo(
         bottomQuoteTarget,
         curve: Curves.easeOut,
