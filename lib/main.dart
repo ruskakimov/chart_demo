@@ -65,6 +65,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   AnimationController _lastTickAnimationController;
   Animation _lastTickAnimation;
 
+  AnimationController _quoteRangeAnimationController;
+
+  double canvasWidth;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +83,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         if (rightEdgeEpoch > prevEpoch) {
           rightEdgeEpoch += elapsedMs; // autopanning
         }
+        recalculateTargetQuoteRange();
         animateQuoteRange(elapsedMs);
         animatePanToCurrentTick(elapsedMs);
       });
@@ -92,6 +97,11 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     _lastTickAnimation = CurvedAnimation(
       parent: _lastTickAnimationController,
       curve: Curves.easeOut,
+    );
+
+    _quoteRangeAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 1000),
     );
 
     // Tick stream simulation.
@@ -143,8 +153,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     rightEdgeEpoch += (panSpeed * elapsedMs).ceil();
   }
 
-  void recalculateTargetQuoteRange(double chartWidth) {
-    final leftEdgeEpoch = rightEdgeEpoch - pxToMs(chartWidth);
+  void recalculateTargetQuoteRange() {
+    if (canvasWidth == null) return;
+    final leftEdgeEpoch = rightEdgeEpoch - pxToMs(canvasWidth);
     var newQuoteMin = double.infinity;
     var newQuoteMax = double.negativeInfinity;
     ticks.where((tick) {
@@ -209,7 +220,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             // TODO: Use velocity for panning inertia.
           },
           child: LayoutBuilder(builder: (context, constraints) {
-            recalculateTargetQuoteRange(constraints.maxWidth);
+            canvasWidth = constraints.maxWidth;
 
             return CustomPaint(
               size: Size.infinite,
