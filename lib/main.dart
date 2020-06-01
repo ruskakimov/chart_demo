@@ -73,10 +73,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
     ticker = this.createTicker((elapsed) {
       setState(() {
-        final prevNowEpoch = nowEpoch;
+        final prevEpoch = nowEpoch;
         nowEpoch = DateTime.now().millisecondsSinceEpoch;
-        final elapsedMs = nowEpoch - prevNowEpoch;
-        if (rightEdgeEpoch > prevNowEpoch) {
+        final elapsedMs = nowEpoch - prevEpoch;
+        if (rightEdgeEpoch > prevEpoch) {
           rightEdgeEpoch += elapsedMs; // autopanning
         }
         animateQuoteRange(elapsedMs);
