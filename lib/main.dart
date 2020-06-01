@@ -62,6 +62,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   int quoteAnimationStartEpoch;
   int panToCurrentAnimationStartEpoch;
 
+  AnimationController _lastTickAnimationController;
+  Animation _lastTickAnimation;
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +85,15 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     });
     ticker.start();
 
+    _lastTickAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 300),
+    );
+    _lastTickAnimation = CurvedAnimation(
+      parent: _lastTickAnimationController,
+      curve: Curves.easeOut,
+    );
+
     // Tick stream simulation.
     Timer.periodic(Duration(seconds: 1), (timer) {
       double newPrice = ticks.last.quote;
@@ -94,6 +106,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           newPrice,
         ));
       });
+      _lastTickAnimationController.reset();
+      _lastTickAnimationController.forward();
     });
   }
 
@@ -186,7 +200,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             });
           },
           onScaleOrPanEnd: (details) {
-            // TODO: Use velocity for panning innertia.
+            // TODO: Use velocity for panning inertia.
           },
           child: LayoutBuilder(builder: (context, constraints) {
             recalculateTargetQuoteRange(constraints.maxWidth);
@@ -200,6 +214,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 rightEdgeEpoch: rightEdgeEpoch,
                 quoteMin: quoteMin,
                 quoteMax: quoteMax,
+                lastTickProgress: _lastTickAnimation.value,
               ),
             );
           }),
@@ -236,6 +251,7 @@ class ChartPainter extends CustomPainter {
     this.rightEdgeEpoch,
     this.quoteMin,
     this.quoteMax,
+    this.lastTickProgress,
   });
 
   static final lineColor = Paint()
@@ -249,6 +265,7 @@ class ChartPainter extends CustomPainter {
   final int rightEdgeEpoch;
   final double quoteMin;
   final double quoteMax;
+  final double lastTickProgress;
 
   Size canvasSize;
 
@@ -281,13 +298,9 @@ class ChartPainter extends CustomPainter {
       path.lineTo(offset.dx, offset.dy);
     }
 
-    final lastTickAnimationProgress =
-        ((DateTime.now().millisecondsSinceEpoch - data.last.epoch) / 200)
-            .clamp(0, 1);
     final last = _toCanvasOffset(data.last);
     final prev = _toCanvasOffset(data[data.length - 2]);
-    final lastTickOffset =
-        prev + (last - prev) * lastTickAnimationProgress.toDouble();
+    final lastTickOffset = prev + (last - prev) * lastTickProgress;
     path.lineTo(lastTickOffset.dx, lastTickOffset.dy);
     canvas.drawPath(path, lineColor);
 
