@@ -54,20 +54,19 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double intervalWidth = 25; // for scaling
   double _prevIntervalWidth;
   double currentTickOffset = 100;
-
-  double quoteMin = 30;
-  double quoteMax = 60;
-  double quoteMinTarget = 30;
-  double quoteMaxTarget = 60;
-  int quoteAnimationStartEpoch;
   int panToCurrentAnimationStartEpoch;
 
   AnimationController _lastTickAnimationController;
   Animation _lastTickAnimation;
 
-  AnimationController _quoteRangeAnimationController;
-
-  double canvasWidth;
+  /// Quote range animation.
+  double canvasWidth; // to determine the range of visible ticks
+  double topQuoteTarget = 60;
+  double bottomQuoteTarget = 30;
+  final quoteOffset = 10;
+  final quoteAnimationDuration = const Duration(milliseconds: 500);
+  AnimationController _bottomQuoteAnimationController;
+  AnimationController _topQuoteAnimationController;
 
   @override
   void initState() {
@@ -83,8 +82,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         if (rightEdgeEpoch > prevEpoch) {
           rightEdgeEpoch += elapsedMs; // autopanning
         }
-        recalculateTargetQuoteRange();
-        animateQuoteRange(elapsedMs);
+        recalculateQuoteTargets();
         animatePanToCurrentTick(elapsedMs);
       });
     });
@@ -99,9 +97,15 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       curve: Curves.easeOut,
     );
 
-    _quoteRangeAnimationController = AnimationController(
+    _bottomQuoteAnimationController = AnimationController.unbounded(
+      value: bottomQuoteTarget,
       vsync: this,
-      duration: Duration(milliseconds: 1000),
+      duration: quoteAnimationDuration,
+    );
+    _topQuoteAnimationController = AnimationController.unbounded(
+      value: topQuoteTarget,
+      vsync: this,
+      duration: quoteAnimationDuration,
     );
 
     // Tick stream simulation.
@@ -127,18 +131,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void animateQuoteRange(int elapsedMs) {
-    if (quoteAnimationStartEpoch == null) return;
-    final remainingAnimationTime = 200 - (nowEpoch - quoteAnimationStartEpoch);
-    if (remainingAnimationTime <= 0) return;
-
-    final quoteMinSpeed = (quoteMinTarget - quoteMin) / remainingAnimationTime;
-    final quoteMaxSpeed = (quoteMaxTarget - quoteMax) / remainingAnimationTime;
-
-    quoteMin += quoteMinSpeed * elapsedMs;
-    quoteMax += quoteMaxSpeed * elapsedMs;
-  }
-
   void animatePanToCurrentTick(int elapsedMs) {
     if (panToCurrentAnimationStartEpoch == null) return;
     final remainingAnimationTime =
@@ -153,26 +145,25 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     rightEdgeEpoch += (panSpeed * elapsedMs).ceil();
   }
 
-  void recalculateTargetQuoteRange() {
+  void recalculateQuoteTargets() {
     if (canvasWidth == null) return;
     final leftEdgeEpoch = rightEdgeEpoch - pxToMs(canvasWidth);
-    var newQuoteMin = double.infinity;
-    var newQuoteMax = double.negativeInfinity;
-    ticks.where((tick) {
-      return tick.epoch <= rightEdgeEpoch && tick.epoch >= leftEdgeEpoch;
-    }).forEach((tick) {
-      newQuoteMin = min(newQuoteMin, tick.quote);
-      newQuoteMax = max(newQuoteMax, tick.quote);
-    });
-    newQuoteMin -= 10;
-    newQuoteMax += 10;
-    if (newQuoteMin != quoteMinTarget) {
-      quoteMinTarget = newQuoteMin;
-      quoteAnimationStartEpoch = nowEpoch;
+    final visibleTickQuotes = ticks
+        .where((tick) =>
+            tick.epoch <= rightEdgeEpoch && tick.epoch >= leftEdgeEpoch)
+        .map((tick) => tick.quote);
+
+    final minQuote = visibleTickQuotes.reduce(min);
+    final maxQuote = visibleTickQuotes.reduce(max);
+
+    if (minQuote - quoteOffset != bottomQuoteTarget) {
+      bottomQuoteTarget = minQuote - quoteOffset;
+      _bottomQuoteAnimationController.stop();
+      _bottomQuoteAnimationController.animateTo(bottomQuoteTarget);
     }
-    if (newQuoteMax != quoteMaxTarget) {
-      quoteMaxTarget = newQuoteMax;
-      quoteAnimationStartEpoch = nowEpoch;
+    if (maxQuote + quoteOffset != topQuoteTarget) {
+      topQuoteTarget = maxQuote + quoteOffset;
+      _topQuoteAnimationController.animateTo(topQuoteTarget);
     }
   }
 
@@ -229,8 +220,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 intervalWidth: intervalWidth,
                 intervalDuration: intervalDuration,
                 rightEdgeEpoch: rightEdgeEpoch,
-                quoteMin: quoteMin,
-                quoteMax: quoteMax,
+                topEdgeQuote: _topQuoteAnimationController.value,
+                bottomEdgeQuote: _bottomQuoteAnimationController.value,
                 lastTickProgress: _lastTickAnimation.value,
               ),
             );
@@ -266,8 +257,8 @@ class ChartPainter extends CustomPainter {
     this.intervalWidth,
     this.intervalDuration,
     this.rightEdgeEpoch,
-    this.quoteMin,
-    this.quoteMax,
+    this.bottomEdgeQuote,
+    this.topEdgeQuote,
     this.lastTickProgress,
   });
 
@@ -280,8 +271,8 @@ class ChartPainter extends CustomPainter {
   final double intervalWidth;
   final int intervalDuration;
   final int rightEdgeEpoch;
-  final double quoteMin;
-  final double quoteMax;
+  final double bottomEdgeQuote;
+  final double topEdgeQuote;
   final double lastTickProgress;
 
   Size canvasSize;
@@ -300,7 +291,9 @@ class ChartPainter extends CustomPainter {
 
   double _quoteToY(double quote) {
     return canvasSize.height -
-        (quote - quoteMin) / (quoteMax - quoteMin) * canvasSize.height;
+        (quote - bottomEdgeQuote) /
+            (topEdgeQuote - bottomEdgeQuote) *
+            canvasSize.height;
   }
 
   @override
@@ -328,7 +321,7 @@ class ChartPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.fill
         ..shader = ui.Gradient.linear(
-          Offset(0, (_quoteToY(quoteMax) + _quoteToY(quoteMin)) / 2),
+          Offset(0, (_quoteToY(topEdgeQuote) + _quoteToY(bottomEdgeQuote)) / 2),
           Offset(0, size.height),
           [
             Colors.white24,
