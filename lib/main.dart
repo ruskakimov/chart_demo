@@ -194,9 +194,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           }
         });
       },
-      onScaleOrPanEnd: (details) {
-        // TODO: Use velocity for panning inertia.
-      },
       child: LayoutBuilder(builder: (context, constraints) {
         canvasWidth = constraints.maxWidth;
 
