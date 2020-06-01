@@ -64,9 +64,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double topQuoteTarget = 60;
   double bottomQuoteTarget = 30;
   final quoteOffset = 10;
-  final quoteAnimationDuration = const Duration(milliseconds: 500);
-  AnimationController _bottomQuoteAnimationController;
+  final quoteAnimationDuration = const Duration(milliseconds: 300);
   AnimationController _topQuoteAnimationController;
+  AnimationController _bottomQuoteAnimationController;
 
   @override
   void initState() {
@@ -97,13 +97,13 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       curve: Curves.easeOut,
     );
 
-    _bottomQuoteAnimationController = AnimationController.unbounded(
-      value: bottomQuoteTarget,
+    _topQuoteAnimationController = AnimationController.unbounded(
+      value: topQuoteTarget,
       vsync: this,
       duration: quoteAnimationDuration,
     );
-    _topQuoteAnimationController = AnimationController.unbounded(
-      value: topQuoteTarget,
+    _bottomQuoteAnimationController = AnimationController.unbounded(
+      value: bottomQuoteTarget,
       vsync: this,
       duration: quoteAnimationDuration,
     );
@@ -159,11 +159,17 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     if (minQuote - quoteOffset != bottomQuoteTarget) {
       bottomQuoteTarget = minQuote - quoteOffset;
       _bottomQuoteAnimationController.stop();
-      _bottomQuoteAnimationController.animateTo(bottomQuoteTarget);
+      _bottomQuoteAnimationController.animateTo(
+        bottomQuoteTarget,
+        curve: Curves.easeOut,
+      );
     }
     if (maxQuote + quoteOffset != topQuoteTarget) {
       topQuoteTarget = maxQuote + quoteOffset;
-      _topQuoteAnimationController.animateTo(topQuoteTarget);
+      _topQuoteAnimationController.animateTo(
+        topQuoteTarget,
+        curve: Curves.easeOut,
+      );
     }
   }
 
