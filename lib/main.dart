@@ -268,7 +268,7 @@ class ChartPainter extends CustomPainter {
   });
 
   static final lineColor = Paint()
-    ..color = Colors.white
+    ..color = Colors.white70
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
 
@@ -326,10 +326,10 @@ class ChartPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.fill
         ..shader = ui.Gradient.linear(
-          Offset(0, (_quoteToY(topEdgeQuote) + _quoteToY(bottomEdgeQuote)) / 2),
+          Offset(0, 0),
           Offset(0, size.height),
           [
-            Colors.white24,
+            Colors.white30,
             Colors.transparent,
           ],
         ),
