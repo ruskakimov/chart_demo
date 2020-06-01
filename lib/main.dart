@@ -111,6 +111,12 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     });
   }
 
+  @override
+  void dispose() {
+    _lastTickAnimationController.dispose();
+    super.dispose();
+  }
+
   void animateQuoteRange(int elapsedMs) {
     if (quoteAnimationStartEpoch == null) return;
     final remainingAnimationTime = 200 - (nowEpoch - quoteAnimationStartEpoch);
