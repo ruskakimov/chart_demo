@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -59,6 +60,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double quoteMinTarget = 30;
   double quoteMaxTarget = 60;
   int quoteAnimationStartEpoch;
+  int panToCurrentAnimationStartEpoch;
 
   @override
   void initState() {
@@ -75,6 +77,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           rightEdgeEpoch += elapsedMs; // autopanning
         }
         animateQuoteRange(elapsedMs);
+        animatePanToCurrentTick(elapsedMs);
       });
     });
     ticker.start();
@@ -96,9 +99,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   void animateQuoteRange(int elapsedMs) {
     if (quoteAnimationStartEpoch == null) return;
-
     final remainingAnimationTime = 200 - (nowEpoch - quoteAnimationStartEpoch);
-
     if (remainingAnimationTime <= 0) return;
 
     final quoteMinSpeed = (quoteMinTarget - quoteMin) / remainingAnimationTime;
@@ -106,6 +107,20 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
     quoteMin += quoteMinSpeed * elapsedMs;
     quoteMax += quoteMaxSpeed * elapsedMs;
+  }
+
+  void animatePanToCurrentTick(int elapsedMs) {
+    if (panToCurrentAnimationStartEpoch == null) return;
+    final remainingAnimationTime =
+        300 - (nowEpoch - panToCurrentAnimationStartEpoch);
+    if (remainingAnimationTime <= 0) return;
+
+    final from = rightEdgeEpoch;
+    final to = nowEpoch + pxToMs(maxCurrentTickOffset) + remainingAnimationTime;
+
+    final panSpeed = (to - from) / remainingAnimationTime;
+
+    rightEdgeEpoch += (panSpeed * elapsedMs).ceil();
   }
 
   void recalculateTargetQuoteRange(double chartWidth) {
@@ -162,8 +177,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           },
           onScaleUpdate: (details) {
             setState(() {
-              intervalWidth = (_prevIntervalWidth * details.horizontalScale)
-                  .clamp(3.0, 50.0);
+              intervalWidth =
+                  (_prevIntervalWidth * details.scale).clamp(3.0, 50.0);
 
               if (rightEdgeEpoch > nowEpoch) {
                 rightEdgeEpoch = nowEpoch + pxToMs(currentTickOffset);
@@ -189,12 +204,12 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             );
           }),
         ),
-        if (rightEdgeEpoch < nowEpoch) _buildScrollForwardButton(),
+        if (rightEdgeEpoch < nowEpoch) _buildForwardButton(),
       ],
     );
   }
 
-  Widget _buildScrollForwardButton() {
+  Widget _buildForwardButton() {
     return Positioned(
       bottom: 40,
       right: 20,
@@ -203,11 +218,13 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           Icons.arrow_forward,
           color: Colors.white,
         ),
-        onPressed: () {
-          rightEdgeEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
-        },
+        onPressed: _panToCurrentTick,
       ),
     );
+  }
+
+  void _panToCurrentTick() {
+    panToCurrentAnimationStartEpoch = nowEpoch;
   }
 }
 
@@ -272,8 +289,24 @@ class ChartPainter extends CustomPainter {
     final lastTickOffset =
         prev + (last - prev) * lastTickAnimationProgress.toDouble();
     path.lineTo(lastTickOffset.dx, lastTickOffset.dy);
-
     canvas.drawPath(path, lineColor);
+
+    path.lineTo(lastTickOffset.dx, size.height);
+    path.lineTo(0, size.height);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..shader = ui.Gradient.linear(
+          Offset(0, (_quoteToY(quoteMax) + _quoteToY(quoteMin)) / 2),
+          Offset(0, size.height),
+          [
+            Colors.white24,
+            Colors.transparent,
+          ],
+        ),
+    );
+
     canvas.drawCircle(lastTickOffset, 3, Paint()..color = Colors.pink);
     canvas.drawLine(
       lastTickOffset,
