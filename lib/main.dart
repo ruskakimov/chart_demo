@@ -229,7 +229,7 @@ class ChartPainter extends CustomPainter {
   });
 
   static final lineColor = Paint()
-    ..color = Colors.white
+    ..color = Colors.white.withOpacity(0.9)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
 
