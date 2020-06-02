@@ -281,10 +281,10 @@ class ChartPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.fill
         ..shader = ui.Gradient.linear(
-          Offset(0, 0),
+          Offset(0, size.height / 2),
           Offset(0, size.height),
           [
-            Colors.white30,
+            Colors.white24,
             Colors.transparent,
           ],
         ),
