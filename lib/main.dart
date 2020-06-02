@@ -5,10 +5,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import 'scale_and_pan_gesture_detector.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIOverlays([]);
   runApp(MyApp());
 }
 
@@ -18,10 +21,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       home: Scaffold(
         backgroundColor: Color(0xFF0E0E0E),
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          title: Text('Chart demo'),
-        ),
         body: Chart(),
       ),
     );
@@ -281,11 +280,11 @@ class ChartPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.fill
         ..shader = ui.Gradient.linear(
-          Offset(0, size.height / 2),
+          Offset(0, 0),
           Offset(0, size.height),
           [
-            Colors.white24,
-            Colors.transparent,
+            Colors.white.withOpacity(0.2),
+            Colors.white.withOpacity(0.01),
           ],
         ),
     );
