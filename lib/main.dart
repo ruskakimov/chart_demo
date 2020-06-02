@@ -50,7 +50,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   ];
 
   int nowEpoch;
-  int rightEdgeEpoch; // for panning
+  int rightBoundEpoch; // for panning
   double intervalWidth = 25; // for scaling
   double _prevIntervalWidth;
   double currentTickOffset = 100;
@@ -61,26 +61,26 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   /// Quote range animation.
   double canvasWidth; // to determine the range of visible ticks
-  double topEdgeQuoteTarget = 60;
-  double bottomEdgeQuoteTarget = 30;
+  double topBoundQuoteTarget = 60;
+  double bottomBoundQuoteTarget = 30;
   final quotePadding = 10;
   final quoteBoundsAnimationDuration = const Duration(milliseconds: 300);
-  AnimationController _topEdgeQuoteAnimationController;
-  AnimationController _bottomEdgeQuoteAnimationController;
+  AnimationController _topBoundQuoteAnimationController;
+  AnimationController _bottomBoundQuoteAnimationController;
 
   @override
   void initState() {
     super.initState();
     nowEpoch = DateTime.now().millisecondsSinceEpoch;
-    rightEdgeEpoch = nowEpoch + pxToMs(currentTickOffset);
+    rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
 
     ticker = this.createTicker((elapsed) {
       setState(() {
         final prevEpoch = nowEpoch;
         nowEpoch = DateTime.now().millisecondsSinceEpoch;
         final elapsedMs = nowEpoch - prevEpoch;
-        if (rightEdgeEpoch > prevEpoch) {
-          rightEdgeEpoch += elapsedMs; // autopanning
+        if (rightBoundEpoch > prevEpoch) {
+          rightBoundEpoch += elapsedMs; // autopanning
         }
         recalculateQuoteBoundTargets();
       });
@@ -96,13 +96,13 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       curve: Curves.easeOut,
     );
 
-    _topEdgeQuoteAnimationController = AnimationController.unbounded(
-      value: topEdgeQuoteTarget,
+    _topBoundQuoteAnimationController = AnimationController.unbounded(
+      value: topBoundQuoteTarget,
       vsync: this,
       duration: quoteBoundsAnimationDuration,
     );
-    _bottomEdgeQuoteAnimationController = AnimationController.unbounded(
-      value: bottomEdgeQuoteTarget,
+    _bottomBoundQuoteAnimationController = AnimationController.unbounded(
+      value: bottomBoundQuoteTarget,
       vsync: this,
       duration: quoteBoundsAnimationDuration,
     );
@@ -132,26 +132,26 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   void recalculateQuoteBoundTargets() {
     if (canvasWidth == null) return;
-    final leftEdgeEpoch = rightEdgeEpoch - pxToMs(canvasWidth);
+    final leftBoundEpoch = rightBoundEpoch - pxToMs(canvasWidth);
     final visibleTickQuotes = ticks
         .where((tick) =>
-            tick.epoch <= rightEdgeEpoch && tick.epoch >= leftEdgeEpoch)
+            tick.epoch <= rightBoundEpoch && tick.epoch >= leftBoundEpoch)
         .map((tick) => tick.quote);
 
     final minQuote = visibleTickQuotes.reduce(min);
     final maxQuote = visibleTickQuotes.reduce(max);
 
-    if (minQuote - quotePadding != bottomEdgeQuoteTarget) {
-      bottomEdgeQuoteTarget = minQuote - quotePadding;
-      _bottomEdgeQuoteAnimationController.animateTo(
-        bottomEdgeQuoteTarget,
+    if (minQuote - quotePadding != bottomBoundQuoteTarget) {
+      bottomBoundQuoteTarget = minQuote - quotePadding;
+      _bottomBoundQuoteAnimationController.animateTo(
+        bottomBoundQuoteTarget,
         curve: Curves.easeOut,
       );
     }
-    if (maxQuote + quotePadding != topEdgeQuoteTarget) {
-      topEdgeQuoteTarget = maxQuote + quotePadding;
-      _topEdgeQuoteAnimationController.animateTo(
-        topEdgeQuoteTarget,
+    if (maxQuote + quotePadding != topBoundQuoteTarget) {
+      topBoundQuoteTarget = maxQuote + quotePadding;
+      _topBoundQuoteAnimationController.animateTo(
+        topBoundQuoteTarget,
         curve: Curves.easeOut,
       );
     }
@@ -173,12 +173,12 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       },
       onPanUpdate: (details) {
         setState(() {
-          rightEdgeEpoch -= pxToMs(details.delta.dx);
+          rightBoundEpoch -= pxToMs(details.delta.dx);
           final upperLimit = nowEpoch + pxToMs(maxCurrentTickOffset);
-          rightEdgeEpoch = rightEdgeEpoch.clamp(0, upperLimit);
+          rightBoundEpoch = rightBoundEpoch.clamp(0, upperLimit);
 
-          if (rightEdgeEpoch > nowEpoch) {
-            currentTickOffset = msToPx(rightEdgeEpoch - nowEpoch);
+          if (rightBoundEpoch > nowEpoch) {
+            currentTickOffset = msToPx(rightBoundEpoch - nowEpoch);
           }
         });
       },
@@ -186,8 +186,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         setState(() {
           intervalWidth = (_prevIntervalWidth * details.scale).clamp(3.0, 50.0);
 
-          if (rightEdgeEpoch > nowEpoch) {
-            rightEdgeEpoch = nowEpoch + pxToMs(currentTickOffset);
+          if (rightBoundEpoch > nowEpoch) {
+            rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
           }
         });
       },
@@ -200,9 +200,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             data: ticks,
             intervalWidth: intervalWidth,
             intervalDuration: intervalDuration,
-            rightEdgeEpoch: rightEdgeEpoch,
-            topEdgeQuote: _topEdgeQuoteAnimationController.value,
-            bottomEdgeQuote: _bottomEdgeQuoteAnimationController.value,
+            rightBoundEpoch: rightBoundEpoch,
+            topBoundQuote: _topBoundQuoteAnimationController.value,
+            bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
             lastTickAnimationProgress: _lastTickAnimation.value,
           ),
         );
@@ -216,9 +216,9 @@ class ChartPainter extends CustomPainter {
     this.data,
     this.intervalWidth,
     this.intervalDuration,
-    this.rightEdgeEpoch,
-    this.bottomEdgeQuote,
-    this.topEdgeQuote,
+    this.rightBoundEpoch,
+    this.bottomBoundQuote,
+    this.topBoundQuote,
     this.lastTickAnimationProgress,
   });
 
@@ -230,9 +230,9 @@ class ChartPainter extends CustomPainter {
   final List<Tick> data;
   final double intervalWidth;
   final int intervalDuration;
-  final int rightEdgeEpoch;
-  final double bottomEdgeQuote;
-  final double topEdgeQuote;
+  final int rightBoundEpoch;
+  final double bottomBoundQuote;
+  final double topBoundQuote;
   final double lastTickAnimationProgress;
 
   Size canvasSize;
@@ -246,13 +246,13 @@ class ChartPainter extends CustomPainter {
 
   double _epochToX(int epoch) {
     return canvasSize.width -
-        (rightEdgeEpoch - epoch) / intervalDuration * intervalWidth;
+        (rightBoundEpoch - epoch) / intervalDuration * intervalWidth;
   }
 
   double _quoteToY(double quote) {
     return canvasSize.height -
-        (quote - bottomEdgeQuote) /
-            (topEdgeQuote - bottomEdgeQuote) *
+        (quote - bottomBoundQuote) /
+            (topBoundQuote - bottomBoundQuote) *
             canvasSize.height;
   }
 
