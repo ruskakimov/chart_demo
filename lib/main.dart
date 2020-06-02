@@ -170,9 +170,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     return ScaleAndPanGestureDetector(
       onScaleOrPanStart: (details) {
         _prevIntervalWidth = intervalWidth;
-        if (rightEdgeEpoch > nowEpoch) {
-          currentTickOffset = msToPx(rightEdgeEpoch - nowEpoch);
-        }
       },
       onPanUpdate: (details) {
         setState(() {
