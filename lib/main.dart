@@ -43,10 +43,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   final int intervalDuration = 1000;
   final double maxCurrentTickOffset = 150;
 
-  List<Tick> ticks = [
-    Tick(DateTime.now().millisecondsSinceEpoch - 2000, 40),
-    Tick(DateTime.now().millisecondsSinceEpoch - 1000, 50),
-  ];
+  List<Tick> ticks = [];
 
   int nowEpoch;
   int rightBoundEpoch; // for panning
@@ -71,6 +68,32 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     nowEpoch = DateTime.now().millisecondsSinceEpoch;
+
+    // Generate tick history.
+    for (var i = 1000; i >= 0; i--) {
+      double newPrice = ticks.isEmpty ? 1000 : ticks.last.quote;
+      if (rng.nextBool()) {
+        newPrice += rng.nextDouble() * 20 - 10;
+      }
+      ticks.add(Tick(nowEpoch - i * 1000, newPrice));
+    }
+
+    // Tick stream simulation.
+    Timer.periodic(Duration(seconds: 1), (timer) {
+      double newPrice = ticks.last.quote;
+      if (rng.nextBool()) {
+        newPrice += rng.nextDouble() * 20 - 10;
+      }
+      setState(() {
+        ticks.add(Tick(
+          DateTime.now().millisecondsSinceEpoch,
+          newPrice,
+        ));
+      });
+      _lastTickAnimationController.reset();
+      _lastTickAnimationController.forward();
+    });
+
     rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
 
     ticker = this.createTicker((elapsed) {
@@ -105,22 +128,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       vsync: this,
       duration: quoteBoundsAnimationDuration,
     );
-
-    // Tick stream simulation.
-    Timer.periodic(Duration(seconds: 1), (timer) {
-      double newPrice = ticks.last.quote;
-      if (rng.nextBool()) {
-        newPrice += rng.nextDouble() * 20 - 10;
-      }
-      setState(() {
-        ticks.add(Tick(
-          DateTime.now().millisecondsSinceEpoch,
-          newPrice,
-        ));
-      });
-      _lastTickAnimationController.reset();
-      _lastTickAnimationController.forward();
-    });
   }
 
   @override
@@ -136,6 +143,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         .where((tick) =>
             tick.epoch <= rightBoundEpoch && tick.epoch >= leftBoundEpoch)
         .map((tick) => tick.quote);
+    if (visibleTickQuotes.isEmpty) return;
 
     final minQuote = visibleTickQuotes.reduce(min);
     final maxQuote = visibleTickQuotes.reduce(max);
