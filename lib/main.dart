@@ -261,6 +261,21 @@ class ChartPainter extends CustomPainter {
     canvas = canvas;
     size = size;
 
+    final lastPointAnimated = _calcLastPointAnimated();
+    final path = _paintLine(lineEnd: lastPointAnimated);
+
+    _paintLineArea(linePath: path, lineEnd: lastPointAnimated);
+    _paintArrow(lastPoint: lastPointAnimated);
+  }
+
+  Offset _calcLastPointAnimated() {
+    final lastPoint = _toCanvasOffset(data.last);
+    final secondLastPoint = _toCanvasOffset(data[data.length - 2]);
+    return secondLastPoint +
+        (lastPoint - secondLastPoint) * lastTickAnimationProgress;
+  }
+
+  Path _paintLine({Offset lineEnd}) {
     Path path = Path();
 
     final firstPoint = _toCanvasOffset(data.first);
@@ -271,23 +286,17 @@ class ChartPainter extends CustomPainter {
       path.lineTo(point.dx, point.dy);
     }
 
-    final lastPoint = _toCanvasOffset(data.last);
-    final secondLastPoint = _toCanvasOffset(data[data.length - 2]);
-    final lastPointAnimated = secondLastPoint +
-        (lastPoint - secondLastPoint) * lastTickAnimationProgress;
-    path.lineTo(lastPointAnimated.dx, lastPointAnimated.dy);
+    path.lineTo(lineEnd.dx, lineEnd.dy);
     canvas.drawPath(path, lineColor);
 
-    path.lineTo(lastPointAnimated.dx, size.height);
-    path.lineTo(0, size.height);
-    _paintLineArea(path);
-
-    _paintArrow(lastPointAnimated);
+    return path;
   }
 
-  void _paintLineArea(Path areaPath) {
+  void _paintLineArea({Path linePath, Offset lineEnd}) {
+    linePath.lineTo(lineEnd.dx, size.height);
+    linePath.lineTo(0, size.height);
     canvas.drawPath(
-      areaPath,
+      linePath,
       Paint()
         ..style = PaintingStyle.fill
         ..shader = ui.Gradient.linear(
@@ -301,7 +310,7 @@ class ChartPainter extends CustomPainter {
     );
   }
 
-  void _paintArrow(Offset lastPoint) {
+  void _paintArrow({Offset lastPoint}) {
     canvas.drawCircle(lastPoint, 3, Paint()..color = Colors.pink);
     canvas.drawLine(
       lastPoint,
