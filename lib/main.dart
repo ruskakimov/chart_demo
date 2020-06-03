@@ -230,6 +230,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
               icon: Icon(Icons.arrow_forward, color: Colors.white),
               onPressed: () {
                 rightBoundEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
+                currentTickOffset = maxCurrentTickOffset;
               },
             ),
           )
