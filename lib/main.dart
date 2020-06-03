@@ -245,15 +245,15 @@ class ChartPainter extends CustomPainter {
   }
 
   double _epochToX(int epoch) {
-    return size.width -
-        (rightBoundEpoch - epoch) / intervalDuration * intervalWidth;
+    final intervalsFromRightBound =
+        (rightBoundEpoch - epoch) / intervalDuration;
+    return size.width - intervalsFromRightBound * intervalWidth;
   }
 
   double _quoteToY(double quote) {
-    return size.height -
-        (quote - bottomBoundQuote) /
-            (topBoundQuote - bottomBoundQuote) *
-            size.height;
+    final quoteBoundRange = topBoundQuote - bottomBoundQuote;
+    final boundFraction = (quote - bottomBoundQuote) / quoteBoundRange;
+    return size.height * (1 - boundFraction);
   }
 
   @override
