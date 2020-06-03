@@ -44,6 +44,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   final double maxCurrentTickOffset = 150;
 
   List<Tick> ticks = [];
+  List<Tick> visibleTicks;
 
   int nowEpoch;
   int rightBoundEpoch; // for panning
@@ -68,15 +69,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     nowEpoch = DateTime.now().millisecondsSinceEpoch;
-
-    // Generate tick history.
-    for (var i = 1000; i >= 0; i--) {
-      double newPrice = ticks.isEmpty ? 1000 : ticks.last.quote;
-      if (rng.nextBool()) {
-        newPrice += rng.nextDouble() * 20 - 10;
-      }
-      ticks.add(Tick(nowEpoch - i * 1000, newPrice));
-    }
+    ticks.addAll([
+      Tick(nowEpoch - 2000, 40),
+      Tick(nowEpoch - 1000, 50),
+    ]);
 
     // Tick stream simulation.
     Timer.periodic(Duration(seconds: 1), (timer) {
@@ -95,6 +91,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     });
 
     rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
+    visibleTicks = ticks;
 
     ticker = this.createTicker((elapsed) {
       setState(() {
@@ -113,6 +110,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       vsync: this,
       duration: Duration(milliseconds: 300),
     );
+    _lastTickAnimationController.value =
+        1; // prevent jump on pregenerated ticks
     _lastTickAnimation = CurvedAnimation(
       parent: _lastTickAnimationController,
       curve: Curves.easeOut,
@@ -138,12 +137,17 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   void recalculateQuoteBoundTargets() {
     if (canvasWidth == null) return;
+
     final leftBoundEpoch = rightBoundEpoch - pxToMs(canvasWidth);
-    final visibleTickQuotes = ticks
+    visibleTicks = ticks
         .where((tick) =>
-            tick.epoch <= rightBoundEpoch && tick.epoch >= leftBoundEpoch)
-        .map((tick) => tick.quote);
-    if (visibleTickQuotes.isEmpty) return;
+            tick.epoch <= rightBoundEpoch + intervalDuration * 2 &&
+            tick.epoch >= leftBoundEpoch - intervalDuration * 2)
+        .toList();
+
+    if (visibleTicks.isEmpty) return;
+
+    final visibleTickQuotes = visibleTicks.map((tick) => tick.quote);
 
     final minQuote = visibleTickQuotes.reduce(min);
     final maxQuote = visibleTickQuotes.reduce(max);
@@ -207,7 +211,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             return CustomPaint(
               size: Size.infinite,
               painter: ChartPainter(
-                data: ticks,
+                data: visibleTicks,
                 intervalWidth: intervalWidth,
                 intervalDuration: intervalDuration,
                 rightBoundEpoch: rightBoundEpoch,
@@ -282,6 +286,7 @@ class ChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (data.length < 2) return;
     this.canvas = canvas;
     this.size = size;
 
