@@ -174,46 +174,62 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return ScaleAndPanGestureDetector(
-      onScaleOrPanStart: (details) {
-        _prevIntervalWidth = intervalWidth;
-      },
-      onPanUpdate: (details) {
-        setState(() {
-          rightBoundEpoch -= pxToMs(details.delta.dx);
-          final upperLimit = nowEpoch + pxToMs(maxCurrentTickOffset);
-          rightBoundEpoch = rightBoundEpoch.clamp(0, upperLimit);
+    return Stack(
+      children: <Widget>[
+        ScaleAndPanGestureDetector(
+          onScaleOrPanStart: (details) {
+            _prevIntervalWidth = intervalWidth;
+          },
+          onPanUpdate: (details) {
+            setState(() {
+              rightBoundEpoch -= pxToMs(details.delta.dx);
+              final upperLimit = nowEpoch + pxToMs(maxCurrentTickOffset);
+              rightBoundEpoch = rightBoundEpoch.clamp(0, upperLimit);
 
-          if (rightBoundEpoch > nowEpoch) {
-            currentTickOffset = msToPx(rightBoundEpoch - nowEpoch);
-          }
-        });
-      },
-      onScaleUpdate: (details) {
-        setState(() {
-          intervalWidth = (_prevIntervalWidth * details.scale).clamp(3.0, 50.0);
+              if (rightBoundEpoch > nowEpoch) {
+                currentTickOffset = msToPx(rightBoundEpoch - nowEpoch);
+              }
+            });
+          },
+          onScaleUpdate: (details) {
+            setState(() {
+              intervalWidth =
+                  (_prevIntervalWidth * details.scale).clamp(3.0, 50.0);
 
-          if (rightBoundEpoch > nowEpoch) {
-            rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
-          }
-        });
-      },
-      child: LayoutBuilder(builder: (context, constraints) {
-        canvasWidth = constraints.maxWidth;
+              if (rightBoundEpoch > nowEpoch) {
+                rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
+              }
+            });
+          },
+          child: LayoutBuilder(builder: (context, constraints) {
+            canvasWidth = constraints.maxWidth;
 
-        return CustomPaint(
-          size: Size.infinite,
-          painter: ChartPainter(
-            data: ticks,
-            intervalWidth: intervalWidth,
-            intervalDuration: intervalDuration,
-            rightBoundEpoch: rightBoundEpoch,
-            topBoundQuote: _topBoundQuoteAnimationController.value,
-            bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
-            lastTickAnimationProgress: _lastTickAnimation.value,
-          ),
-        );
-      }),
+            return CustomPaint(
+              size: Size.infinite,
+              painter: ChartPainter(
+                data: ticks,
+                intervalWidth: intervalWidth,
+                intervalDuration: intervalDuration,
+                rightBoundEpoch: rightBoundEpoch,
+                topBoundQuote: _topBoundQuoteAnimationController.value,
+                bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
+                lastTickAnimationProgress: _lastTickAnimation.value,
+              ),
+            );
+          }),
+        ),
+        if (rightBoundEpoch < nowEpoch)
+          Positioned(
+            bottom: 30,
+            right: 20,
+            child: IconButton(
+              icon: Icon(Icons.arrow_forward, color: Colors.white),
+              onPressed: () {
+                rightBoundEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
+              },
+            ),
+          )
+      ],
     );
   }
 }
