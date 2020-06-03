@@ -258,8 +258,8 @@ class ChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas = canvas;
-    size = size;
+    this.canvas = canvas;
+    this.size = size;
 
     final lastPointAnimated = _calcLastPointAnimated();
     final path = _paintLine(lineEnd: lastPointAnimated);
