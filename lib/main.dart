@@ -331,6 +331,14 @@ class ChartPainter extends CustomPainter {
 
     _paintLineArea(linePath: path, lineEnd: lastPointAnimated);
     _paintArrow(lastPoint: lastPointAnimated);
+
+    _paintNowX__forTesting();
+  }
+
+  void _paintNowX__forTesting() {
+    final nowX = _epochToX(DateTime.now().millisecondsSinceEpoch);
+    canvas.drawLine(Offset(nowX, 0), Offset(nowX, size.height),
+        Paint()..color = Colors.yellow);
   }
 
   Offset _calcLastPointAnimated() {
