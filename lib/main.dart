@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert' show json;
+import 'dart:io' show WebSocket;
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -44,7 +46,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   final double maxCurrentTickOffset = 150;
 
   List<Tick> ticks = [];
-  List<Tick> visibleTicks;
+  List<Tick> visibleTicks = [];
 
   int nowEpoch;
   int rightBoundEpoch; // for panning
@@ -69,41 +71,53 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     nowEpoch = DateTime.now().millisecondsSinceEpoch;
-    ticks.addAll([
-      Tick(nowEpoch - 2000, 40),
-      Tick(nowEpoch - 1000, 50),
-    ]);
 
-    _fakeTickStream();
+    _initTickStream();
 
     rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
-    visibleTicks = ticks;
 
-    ticker = this.createTicker(_onEachFrame);
+    ticker = this.createTicker(_onNewFrame);
     ticker.start();
 
     _setupAnimations();
   }
 
-  void _fakeTickStream() {
-// Tick stream simulation.
-    Timer.periodic(Duration(seconds: 1), (timer) {
-      double newPrice = ticks.last.quote;
-      if (rng.nextBool()) {
-        newPrice += rng.nextDouble() * 20 - 10;
+  void _initTickStream() async {
+    WebSocket ws;
+    try {
+      ws = await WebSocket.connect(
+          'wss://ws.binaryws.com/websockets/v3?app_id=1089');
+
+      if (ws?.readyState == WebSocket.open) {
+        ws.listen(
+          (resposne) {
+            final data = Map<String, dynamic>.from(json.decode(resposne));
+            final epoch = data['tick']['epoch'] * 1000;
+            final quote = data['tick']['quote'];
+            print('$nowEpoch $epoch $quote');
+            _onNewTick(epoch, quote.toDouble());
+          },
+          onDone: () => print('Done!'),
+          onError: (e) => throw new Exception(e),
+        );
+        ws.add(json.encode({'ticks': 'R_100'}));
       }
-      setState(() {
-        ticks.add(Tick(
-          DateTime.now().millisecondsSinceEpoch,
-          newPrice,
-        ));
-      });
-      _lastTickAnimationController.reset();
-      _lastTickAnimationController.forward();
-    });
+    } catch (e) {
+      ws?.close();
+      print('Error: $e');
+    }
   }
 
-  void _onEachFrame(_) {
+  void _onNewTick(int epoch, double quote) {
+    setState(() {
+      ticks.add(Tick(epoch, quote));
+    });
+
+    _lastTickAnimationController.reset();
+    _lastTickAnimationController.forward();
+  }
+
+  void _onNewFrame(_) {
     setState(() {
       final prevEpoch = nowEpoch;
       nowEpoch = DateTime.now().millisecondsSinceEpoch;
