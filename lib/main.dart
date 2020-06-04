@@ -59,10 +59,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   Animation _lastTickAnimation;
 
   /// Quote range animation.
-  double canvasWidth; // to determine the range of visible ticks
+  Size canvasSize; // to determine the range of visible ticks
   double topBoundQuoteTarget = 60;
   double bottomBoundQuoteTarget = 30;
-  final quotePadding = 10;
   final quoteBoundsAnimationDuration = const Duration(milliseconds: 300);
   AnimationController _topBoundQuoteAnimationController;
   AnimationController _bottomBoundQuoteAnimationController;
@@ -160,9 +159,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   }
 
   void recalculateQuoteBoundTargets() {
-    if (canvasWidth == null) return;
+    if (canvasSize == null) return;
 
-    final leftBoundEpoch = rightBoundEpoch - pxToMs(canvasWidth);
+    final leftBoundEpoch = rightBoundEpoch - pxToMs(canvasSize.width);
     visibleTicks = ticks
         .where((tick) =>
             tick.epoch <= rightBoundEpoch + intervalDuration * 2 &&
@@ -176,15 +175,15 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     final minQuote = visibleTickQuotes.reduce(min);
     final maxQuote = visibleTickQuotes.reduce(max);
 
-    if (minQuote - quotePadding != bottomBoundQuoteTarget) {
-      bottomBoundQuoteTarget = minQuote - quotePadding;
+    if (minQuote != bottomBoundQuoteTarget) {
+      bottomBoundQuoteTarget = minQuote;
       _bottomBoundQuoteAnimationController.animateTo(
         bottomBoundQuoteTarget,
         curve: Curves.easeOut,
       );
     }
-    if (maxQuote + quotePadding != topBoundQuoteTarget) {
-      topBoundQuoteTarget = maxQuote + quotePadding;
+    if (maxQuote != topBoundQuoteTarget) {
+      topBoundQuoteTarget = maxQuote;
       _topBoundQuoteAnimationController.animateTo(
         topBoundQuoteTarget,
         curve: Curves.easeOut,
@@ -230,17 +229,19 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             });
           },
           child: LayoutBuilder(builder: (context, constraints) {
-            canvasWidth = constraints.maxWidth;
+            canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
 
             return CustomPaint(
               size: Size.infinite,
               painter: ChartPainter(
                 data: visibleTicks,
-                intervalWidth: intervalWidth,
                 intervalDuration: intervalDuration,
+                intervalWidth: intervalWidth,
                 rightBoundEpoch: rightBoundEpoch,
                 topBoundQuote: _topBoundQuoteAnimationController.value,
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
+                topPadding: 30,
+                bottomPadding: 30,
                 lastTickAnimationProgress: _lastTickAnimation.value,
               ),
             );
@@ -266,11 +267,13 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 class ChartPainter extends CustomPainter {
   ChartPainter({
     this.data,
-    this.intervalWidth,
     this.intervalDuration,
+    this.intervalWidth,
     this.rightBoundEpoch,
-    this.bottomBoundQuote,
     this.topBoundQuote,
+    this.bottomBoundQuote,
+    this.topPadding,
+    this.bottomPadding,
     this.lastTickAnimationProgress,
   });
 
@@ -280,11 +283,18 @@ class ChartPainter extends CustomPainter {
     ..strokeWidth = 1;
 
   final List<Tick> data;
-  final double intervalWidth;
+
   final int intervalDuration;
+  final double intervalWidth;
+
   final int rightBoundEpoch;
-  final double bottomBoundQuote;
+
   final double topBoundQuote;
+  final double bottomBoundQuote;
+
+  final double topPadding;
+  final double bottomPadding;
+
   final double lastTickAnimationProgress;
 
   Canvas canvas;
@@ -306,7 +316,8 @@ class ChartPainter extends CustomPainter {
   double _quoteToY(double quote) {
     final quoteBoundRange = topBoundQuote - bottomBoundQuote;
     final boundFraction = (quote - bottomBoundQuote) / quoteBoundRange;
-    return size.height * (1 - boundFraction);
+    return topPadding +
+        (size.height - topPadding - bottomPadding) * (1 - boundFraction);
   }
 
   @override
