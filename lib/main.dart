@@ -74,7 +74,19 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       Tick(nowEpoch - 1000, 50),
     ]);
 
-    // Tick stream simulation.
+    _fakeTickStream();
+
+    rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
+    visibleTicks = ticks;
+
+    ticker = this.createTicker(_onEachFrame);
+    ticker.start();
+
+    _setupAnimations();
+  }
+
+  void _fakeTickStream() {
+// Tick stream simulation.
     Timer.periodic(Duration(seconds: 1), (timer) {
       double newPrice = ticks.last.quote;
       if (rng.nextBool()) {
@@ -89,23 +101,21 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       _lastTickAnimationController.reset();
       _lastTickAnimationController.forward();
     });
+  }
 
-    rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
-    visibleTicks = ticks;
-
-    ticker = this.createTicker((elapsed) {
-      setState(() {
-        final prevEpoch = nowEpoch;
-        nowEpoch = DateTime.now().millisecondsSinceEpoch;
-        final elapsedMs = nowEpoch - prevEpoch;
-        if (rightBoundEpoch > prevEpoch) {
-          rightBoundEpoch += elapsedMs; // autopanning
-        }
-        recalculateQuoteBoundTargets();
-      });
+  void _onEachFrame(_) {
+    setState(() {
+      final prevEpoch = nowEpoch;
+      nowEpoch = DateTime.now().millisecondsSinceEpoch;
+      final elapsedMs = nowEpoch - prevEpoch;
+      if (rightBoundEpoch > prevEpoch) {
+        rightBoundEpoch += elapsedMs; // autopanning
+      }
+      recalculateQuoteBoundTargets();
     });
-    ticker.start();
+  }
 
+  void _setupAnimations() {
     _lastTickAnimationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 300),
