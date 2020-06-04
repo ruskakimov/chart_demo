@@ -90,7 +90,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             final data = Map<String, dynamic>.from(json.decode(resposne));
             final epoch = data['tick']['epoch'] * 1000;
             final quote = data['tick']['quote'];
-            print('$nowEpoch $epoch $quote');
             _onNewTick(epoch, quote.toDouble());
           },
           onDone: () => print('Done!'),
@@ -289,10 +288,11 @@ class ChartPainter extends CustomPainter {
     this.bottomPadding,
   });
 
-  static final lineColor = Paint()
-    ..color = Colors.white.withOpacity(0.9)
+  final lineColor = Paint()
+    ..color = Colors.white.withOpacity(0.8)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
+  final coralColor = Color(0xFFFF444F);
 
   final List<Tick> ticks;
   final Tick animatedCurrentTick;
@@ -393,7 +393,7 @@ class ChartPainter extends CustomPainter {
 
   void _paintArrow({Tick currentTick}) {
     final offset = _toCanvasOffset(currentTick);
-    canvas.drawCircle(offset, 4, Paint()..color = Colors.pink);
+    canvas.drawCircle(offset, 3, Paint()..color = Colors.white);
     canvas.drawLine(
       Offset(0, offset.dy),
       Offset(size.width, offset.dy),
@@ -401,6 +401,36 @@ class ChartPainter extends CustomPainter {
         ..color = Colors.white24
         ..strokeWidth = 1,
     );
+    _paintArrowHead(y: offset.dy, quote: currentTick.quote);
+  }
+
+  void _paintArrowHead({double y, double quote}) {
+    final width = 60;
+    final height = 30;
+    canvas.drawRect(
+        Rect.fromLTRB(
+          size.width - width,
+          y - height / 2,
+          size.width,
+          y + height / 2,
+        ),
+        Paint()..color = coralColor);
+
+    TextSpan span = TextSpan(
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+      ),
+      text: '${quote.toStringAsFixed(2)}',
+    );
+    TextPainter tp = TextPainter(
+      text: span,
+      textAlign: TextAlign.right,
+      textDirection: TextDirection.rtl,
+    );
+    tp.layout();
+    tp.paint(canvas, Offset(size.width - width + 8, y - height / 2 + 8));
   }
 
   @override
