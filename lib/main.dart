@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert' show json;
 import 'dart:io' show WebSocket;
 import 'dart:math';
@@ -39,7 +38,6 @@ class Chart extends StatefulWidget {
 }
 
 class _ChartState extends State<Chart> with TickerProviderStateMixin {
-  static final rng = Random();
   Ticker ticker;
 
   final int intervalDuration = 1000;
@@ -55,8 +53,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double currentTickOffset = 100;
   int panToCurrentAnimationStartEpoch;
 
-  AnimationController _lastTickAnimationController;
-  Animation _lastTickAnimation;
+  AnimationController _currentTickAnimationController;
+  Animation _currentTickAnimation;
 
   /// Quote range animation.
   Size canvasSize; // to determine the range of visible ticks
@@ -69,10 +67,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    nowEpoch = DateTime.now().millisecondsSinceEpoch;
-
     _initTickStream();
 
+    nowEpoch = DateTime.now().millisecondsSinceEpoch;
     rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
 
     ticker = this.createTicker(_onNewFrame);
@@ -112,8 +109,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       ticks.add(Tick(epoch, quote));
     });
 
-    _lastTickAnimationController.reset();
-    _lastTickAnimationController.forward();
+    _currentTickAnimationController.reset();
+    _currentTickAnimationController.forward();
   }
 
   void _onNewFrame(_) {
@@ -129,14 +126,12 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   }
 
   void _setupAnimations() {
-    _lastTickAnimationController = AnimationController(
+    _currentTickAnimationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 300),
     );
-    _lastTickAnimationController.value =
-        1; // prevent jump on pregenerated ticks
-    _lastTickAnimation = CurvedAnimation(
-      parent: _lastTickAnimationController,
+    _currentTickAnimation = CurvedAnimation(
+      parent: _currentTickAnimationController,
       curve: Curves.easeOut,
     );
 
@@ -154,7 +149,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _lastTickAnimationController.dispose();
+    _currentTickAnimationController.dispose();
     super.dispose();
   }
 
@@ -199,6 +194,20 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     return ms / intervalDuration * intervalWidth;
   }
 
+  Tick _animateCurrentTick() {
+    if (ticks.length < 2) return null;
+    final last = ticks[ticks.length - 1];
+    final secondLast = ticks[ticks.length - 2];
+
+    return Tick(
+      (secondLast.epoch +
+              (last.epoch - secondLast.epoch) * _currentTickAnimation.value)
+          .toInt(),
+      secondLast.quote +
+          (last.quote - secondLast.quote) * _currentTickAnimation.value,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -234,8 +243,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
             return CustomPaint(
               size: Size.infinite,
               painter: ChartPainter(
-                data: visibleTicks,
-                endsWithLastTick: visibleTicks.last == ticks.last,
+                ticks: visibleTicks,
+                animatedCurrentTick: _animateCurrentTick(),
+                endsWithCurrentTick:
+                    visibleTicks.isNotEmpty && visibleTicks.last == ticks.last,
                 intervalDuration: intervalDuration,
                 intervalWidth: intervalWidth,
                 rightBoundEpoch: rightBoundEpoch,
@@ -243,7 +254,6 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
                 topPadding: 30,
                 bottomPadding: 30,
-                lastTickAnimationProgress: _lastTickAnimation.value,
               ),
             );
           }),
@@ -267,8 +277,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
 class ChartPainter extends CustomPainter {
   ChartPainter({
-    this.data,
-    this.endsWithLastTick,
+    this.ticks,
+    this.animatedCurrentTick,
+    this.endsWithCurrentTick,
     this.intervalDuration,
     this.intervalWidth,
     this.rightBoundEpoch,
@@ -276,7 +287,6 @@ class ChartPainter extends CustomPainter {
     this.bottomBoundQuote,
     this.topPadding,
     this.bottomPadding,
-    this.lastTickAnimationProgress,
   });
 
   static final lineColor = Paint()
@@ -284,8 +294,9 @@ class ChartPainter extends CustomPainter {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
 
-  final List<Tick> data;
-  final bool endsWithLastTick;
+  final List<Tick> ticks;
+  final Tick animatedCurrentTick;
+  final bool endsWithCurrentTick;
 
   final int intervalDuration;
   final double intervalWidth;
@@ -297,8 +308,6 @@ class ChartPainter extends CustomPainter {
 
   final double topPadding;
   final double bottomPadding;
-
-  final double lastTickAnimationProgress;
 
   Canvas canvas;
   Size size;
@@ -326,17 +335,19 @@ class ChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.length < 2) return;
+    if (ticks.length < 2) return;
     this.canvas = canvas;
     this.size = size;
 
-    final lastPoint = endsWithLastTick
-        ? _calcLastPointAnimated()
-        : _toCanvasOffset(data.last);
-    final path = _paintLine(lineEnd: lastPoint);
+    if (endsWithCurrentTick) {
+      ticks.removeLast();
+      ticks.add(animatedCurrentTick);
+    }
 
-    _paintLineArea(linePath: path, lineEnd: lastPoint);
-    if (endsWithLastTick) _paintArrow(lastPoint: lastPoint);
+    final path = _paintLine();
+    _paintLineArea(linePath: path);
+
+    _paintArrow(currentTick: animatedCurrentTick);
   }
 
   void _paintNowX__forTesting() {
@@ -345,32 +356,25 @@ class ChartPainter extends CustomPainter {
         Paint()..color = Colors.yellow);
   }
 
-  Offset _calcLastPointAnimated() {
-    final lastPoint = _toCanvasOffset(data.last);
-    final secondLastPoint = _toCanvasOffset(data[data.length - 2]);
-    return secondLastPoint +
-        (lastPoint - secondLastPoint) * lastTickAnimationProgress;
-  }
-
-  Path _paintLine({Offset lineEnd}) {
+  Path _paintLine() {
     Path path = Path();
-
-    final firstPoint = _toCanvasOffset(data.first);
+    final firstPoint = _toCanvasOffset(ticks.first);
     path.moveTo(firstPoint.dx, firstPoint.dy);
 
-    for (var i = 1; i < data.length - 1; i++) {
-      final point = _toCanvasOffset(data[i]);
+    ticks.skip(1).forEach((tick) {
+      final point = _toCanvasOffset(tick);
       path.lineTo(point.dx, point.dy);
-    }
+    });
 
-    path.lineTo(lineEnd.dx, lineEnd.dy);
     canvas.drawPath(path, lineColor);
-
     return path;
   }
 
   void _paintLineArea({Path linePath, Offset lineEnd}) {
-    linePath.lineTo(lineEnd.dx, size.height);
+    linePath.lineTo(
+      _epochToX(ticks.last.epoch),
+      size.height,
+    );
     linePath.lineTo(0, size.height);
     canvas.drawPath(
       linePath,
@@ -387,13 +391,14 @@ class ChartPainter extends CustomPainter {
     );
   }
 
-  void _paintArrow({Offset lastPoint}) {
-    canvas.drawCircle(lastPoint, 3, Paint()..color = Colors.pink);
+  void _paintArrow({Tick currentTick}) {
+    final offset = _toCanvasOffset(currentTick);
+    canvas.drawCircle(offset, 4, Paint()..color = Colors.pink);
     canvas.drawLine(
-      lastPoint,
-      Offset(size.width, lastPoint.dy),
+      Offset(0, offset.dy),
+      Offset(size.width, offset.dy),
       Paint()
-        ..color = Colors.pink
+        ..color = Colors.white24
         ..strokeWidth = 1,
     );
   }
