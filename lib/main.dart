@@ -235,6 +235,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
               size: Size.infinite,
               painter: ChartPainter(
                 data: visibleTicks,
+                endsWithLastTick: visibleTicks.last == ticks.last,
                 intervalDuration: intervalDuration,
                 intervalWidth: intervalWidth,
                 rightBoundEpoch: rightBoundEpoch,
@@ -267,6 +268,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 class ChartPainter extends CustomPainter {
   ChartPainter({
     this.data,
+    this.endsWithLastTick,
     this.intervalDuration,
     this.intervalWidth,
     this.rightBoundEpoch,
@@ -283,6 +285,7 @@ class ChartPainter extends CustomPainter {
     ..strokeWidth = 1;
 
   final List<Tick> data;
+  final bool endsWithLastTick;
 
   final int intervalDuration;
   final double intervalWidth;
@@ -327,11 +330,13 @@ class ChartPainter extends CustomPainter {
     this.canvas = canvas;
     this.size = size;
 
-    final lastPointAnimated = _calcLastPointAnimated();
-    final path = _paintLine(lineEnd: lastPointAnimated);
+    final lastPoint = endsWithLastTick
+        ? _calcLastPointAnimated()
+        : _toCanvasOffset(data.last);
+    final path = _paintLine(lineEnd: lastPoint);
 
-    _paintLineArea(linePath: path, lineEnd: lastPointAnimated);
-    _paintArrow(lastPoint: lastPointAnimated);
+    _paintLineArea(linePath: path, lineEnd: lastPoint);
+    if (endsWithLastTick) _paintArrow(lastPoint: lastPoint);
   }
 
   void _paintNowX__forTesting() {
