@@ -315,6 +315,7 @@ class ChartPainter extends CustomPainter {
 
   double _quoteToY(double quote) {
     final quoteBoundRange = topBoundQuote - bottomBoundQuote;
+    if (quoteBoundRange == 0) return size.height / 2;
     final boundFraction = (quote - bottomBoundQuote) / quoteBoundRange;
     return topPadding +
         (size.height - topPadding - bottomPadding) * (1 - boundFraction);
@@ -331,8 +332,6 @@ class ChartPainter extends CustomPainter {
 
     _paintLineArea(linePath: path, lineEnd: lastPointAnimated);
     _paintArrow(lastPoint: lastPointAnimated);
-
-    _paintNowX__forTesting();
   }
 
   void _paintNowX__forTesting() {
