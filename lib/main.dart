@@ -251,6 +251,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 rightBoundEpoch: rightBoundEpoch,
                 topBoundQuote: _topBoundQuoteAnimationController.value,
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
+                quoteInterval: 0.05,
                 topPadding: 30,
                 bottomPadding: 30,
               ),
@@ -284,6 +285,7 @@ class ChartPainter extends CustomPainter {
     this.rightBoundEpoch,
     this.topBoundQuote,
     this.bottomBoundQuote,
+    this.quoteInterval,
     this.topPadding,
     this.bottomPadding,
   });
@@ -305,6 +307,7 @@ class ChartPainter extends CustomPainter {
 
   final double topBoundQuote;
   final double bottomBoundQuote;
+  final double quoteInterval;
 
   final double topPadding;
   final double bottomPadding;
@@ -344,9 +347,8 @@ class ChartPainter extends CustomPainter {
       ticks.add(animatedCurrentTick);
     }
 
-    final path = _paintLine();
-    _paintLineArea(linePath: path);
-
+    _paintGrid();
+    _paintLine();
     _paintArrow(currentTick: animatedCurrentTick);
   }
 
@@ -356,7 +358,7 @@ class ChartPainter extends CustomPainter {
         Paint()..color = Colors.yellow);
   }
 
-  Path _paintLine() {
+  void _paintLine() {
     Path path = Path();
     final firstPoint = _toCanvasOffset(ticks.first);
     path.moveTo(firstPoint.dx, firstPoint.dy);
@@ -367,10 +369,11 @@ class ChartPainter extends CustomPainter {
     });
 
     canvas.drawPath(path, lineColor);
-    return path;
+
+    _paintLineArea(linePath: path);
   }
 
-  void _paintLineArea({Path linePath, Offset lineEnd}) {
+  void _paintLineArea({Path linePath}) {
     linePath.lineTo(
       _epochToX(ticks.last.epoch),
       size.height,
@@ -389,6 +392,27 @@ class ChartPainter extends CustomPainter {
           ],
         ),
     );
+  }
+
+  void _paintGrid() {
+    final pixelToQuote = (topBoundQuote - bottomBoundQuote) /
+        (size.height - topPadding - bottomPadding);
+    final topEdgeQuote = topBoundQuote + topPadding * pixelToQuote;
+    final bottomEdgeQuote = bottomBoundQuote - bottomPadding * pixelToQuote;
+    final gridLineQuotes = [];
+    for (var q = topEdgeQuote.ceilToDouble();
+        q > bottomEdgeQuote;
+        q -= quoteInterval) {
+      if (q < topEdgeQuote) gridLineQuotes.add(q);
+    }
+    gridLineQuotes.forEach((quote) {
+      final y = _quoteToY(quote);
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        Paint()..color = Colors.white12,
+      );
+    });
   }
 
   void _paintArrow({Tick currentTick}) {
