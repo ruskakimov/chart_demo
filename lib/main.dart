@@ -470,16 +470,22 @@ class ChartPainter extends CustomPainter {
   }
 
   void _paintArrowHead({double y, double quote}) {
-    final width = quoteBarWidth;
-    final height = 30;
-    canvas.drawRect(
-        Rect.fromLTRB(
-          size.width - width,
-          y - height / 2,
-          size.width,
-          y + height / 2,
-        ),
-        Paint()..color = coralColor);
+    final triangleWidth = 8;
+    final height = 24;
+
+    final path = Path();
+    path.moveTo(size.width - quoteBarWidth - triangleWidth, y);
+    path.lineTo(size.width - quoteBarWidth, y - height / 2);
+    path.lineTo(size.width, y - height / 2);
+    path.lineTo(size.width, y + height / 2);
+    path.lineTo(size.width - quoteBarWidth, y + height / 2);
+    path.lineTo(size.width - quoteBarWidth - triangleWidth, y);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = coralColor
+        ..style = PaintingStyle.fill,
+    );
 
     TextSpan span = TextSpan(
       style: TextStyle(
@@ -491,11 +497,14 @@ class ChartPainter extends CustomPainter {
     );
     TextPainter tp = TextPainter(
       text: span,
-      textAlign: TextAlign.right,
+      textAlign: TextAlign.end,
       textDirection: TextDirection.rtl,
     );
     tp.layout();
-    tp.paint(canvas, Offset(size.width - width + 8, y - height / 2 + 8));
+    tp.paint(
+      canvas,
+      Offset(size.width - quoteBarWidth + 6, y - 6),
+    );
   }
 
   @override
