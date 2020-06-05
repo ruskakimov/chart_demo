@@ -251,7 +251,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 rightBoundEpoch: rightBoundEpoch,
                 topBoundQuote: _topBoundQuoteAnimationController.value,
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
-                quoteInterval: 0.05,
+                quoteInterval: 1,
                 topPadding: 30,
                 bottomPadding: 30,
               ),
@@ -261,7 +261,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         if (rightBoundEpoch < nowEpoch)
           Positioned(
             bottom: 30,
-            right: 20,
+            right: 70,
             child: IconButton(
               icon: Icon(Icons.arrow_forward, color: Colors.white),
               onPressed: () {
@@ -295,6 +295,7 @@ class ChartPainter extends CustomPainter {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
   final coralColor = Color(0xFFFF444F);
+  final quoteBarWidth = 60.0;
 
   final List<Tick> ticks;
   final Tick animatedCurrentTick;
@@ -347,8 +348,10 @@ class ChartPainter extends CustomPainter {
       ticks.add(animatedCurrentTick);
     }
 
-    _paintGrid();
+    final gridLineQuotes = _calcGridLineQuotes();
+    _paintQuoteGridLines(gridLineQuotes);
     _paintLine();
+    _paintQuoteGridValues(gridLineQuotes);
     _paintArrow(currentTick: animatedCurrentTick);
   }
 
@@ -394,17 +397,21 @@ class ChartPainter extends CustomPainter {
     );
   }
 
-  void _paintGrid() {
+  List<double> _calcGridLineQuotes() {
     final pixelToQuote = (topBoundQuote - bottomBoundQuote) /
         (size.height - topPadding - bottomPadding);
     final topEdgeQuote = topBoundQuote + topPadding * pixelToQuote;
     final bottomEdgeQuote = bottomBoundQuote - bottomPadding * pixelToQuote;
-    final gridLineQuotes = [];
+    final gridLineQuotes = <double>[];
     for (var q = topEdgeQuote.ceilToDouble();
         q > bottomEdgeQuote;
         q -= quoteInterval) {
       if (q < topEdgeQuote) gridLineQuotes.add(q);
     }
+    return gridLineQuotes;
+  }
+
+  void _paintQuoteGridLines(List<double> gridLineQuotes) {
     gridLineQuotes.forEach((quote) {
       final y = _quoteToY(quote);
       canvas.drawLine(
@@ -413,6 +420,39 @@ class ChartPainter extends CustomPainter {
         Paint()..color = Colors.white12,
       );
     });
+  }
+
+  void _paintQuoteGridValues(List<double> gridLineQuotes) {
+    canvas.drawRect(
+      Rect.fromLTRB(
+        size.width - quoteBarWidth,
+        0,
+        size.width,
+        size.height,
+      ),
+      Paint()..color = Color(0xFF0E0E0E),
+    );
+    gridLineQuotes.forEach((quote) {
+      _paintQuoteGridValue(quote);
+    });
+  }
+
+  void _paintQuoteGridValue(double quote) {
+    TextSpan span = TextSpan(
+      style: TextStyle(
+        color: Colors.white30,
+        fontSize: 12,
+      ),
+      text: '${quote.toStringAsFixed(2)}',
+    );
+    TextPainter tp = TextPainter(
+      text: span,
+      textAlign: TextAlign.right,
+      textDirection: TextDirection.rtl,
+    );
+    tp.layout();
+    final y = _quoteToY(quote);
+    tp.paint(canvas, Offset(size.width - quoteBarWidth + 8, y - 6));
   }
 
   void _paintArrow({Tick currentTick}) {
@@ -429,7 +469,7 @@ class ChartPainter extends CustomPainter {
   }
 
   void _paintArrowHead({double y, double quote}) {
-    final width = 60;
+    final width = quoteBarWidth;
     final height = 30;
     canvas.drawRect(
         Rect.fromLTRB(
