@@ -252,9 +252,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 rightBoundEpoch: rightBoundEpoch,
                 topBoundQuote: _topBoundQuoteAnimationController.value,
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
-                quoteInterval: 1,
+                quoteGridInterval: 1,
+                timeGridInterval: intervalDuration * 30,
                 topPadding: 30,
-                bottomPadding: 30,
+                bottomPadding: 60,
               ),
             );
           }),
@@ -286,7 +287,8 @@ class ChartPainter extends CustomPainter {
     this.rightBoundEpoch,
     this.topBoundQuote,
     this.bottomBoundQuote,
-    this.quoteInterval,
+    this.quoteGridInterval,
+    this.timeGridInterval,
     this.topPadding,
     this.bottomPadding,
   });
@@ -309,7 +311,9 @@ class ChartPainter extends CustomPainter {
 
   final double topBoundQuote;
   final double bottomBoundQuote;
-  final double quoteInterval;
+
+  final double quoteGridInterval;
+  final int timeGridInterval;
 
   final double topPadding;
   final double bottomPadding;
@@ -350,8 +354,12 @@ class ChartPainter extends CustomPainter {
     }
 
     final gridLineQuotes = _calcGridLineQuotes();
+    final gridLineEpochs = _calcGridLineEpochs();
     _paintQuoteGridLines(gridLineQuotes);
+    _paintTimeGridLines(gridLineEpochs);
+
     _paintLine();
+
     _paintQuoteGridValues(gridLineQuotes);
     _paintArrow(currentTick: animatedCurrentTick);
   }
@@ -406,10 +414,24 @@ class ChartPainter extends CustomPainter {
     final gridLineQuotes = <double>[];
     for (var q = topEdgeQuote.ceilToDouble();
         q > bottomEdgeQuote;
-        q -= quoteInterval) {
+        q -= quoteGridInterval) {
       if (q < topEdgeQuote) gridLineQuotes.add(q);
     }
     return gridLineQuotes;
+  }
+
+  List<int> _calcGridLineEpochs() {
+    final pixelToEpoch = intervalDuration / intervalWidth;
+    final firstRight =
+        (rightBoundEpoch - rightBoundEpoch % timeGridInterval).toInt();
+    final leftBoundEpoch = rightBoundEpoch - size.width * pixelToEpoch;
+    final epochs = <int>[];
+    for (int epoch = firstRight;
+        epoch > leftBoundEpoch;
+        epoch -= timeGridInterval) {
+      epochs.add(epoch);
+    }
+    return epochs;
   }
 
   void _paintQuoteGridLines(List<double> gridLineQuotes) {
@@ -418,6 +440,17 @@ class ChartPainter extends CustomPainter {
       canvas.drawLine(
         Offset(0, y),
         Offset(size.width, y),
+        Paint()..color = Colors.white12,
+      );
+    });
+  }
+
+  void _paintTimeGridLines(List<int> gridLineEpochs) {
+    gridLineEpochs.forEach((epoch) {
+      final x = _epochToX(epoch);
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
         Paint()..color = Colors.white12,
       );
     });
