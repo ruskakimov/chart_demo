@@ -53,6 +53,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double _prevIntervalWidth;
   double currentTickOffset = 100;
   int panToCurrentAnimationStartEpoch;
+  double verticalPadding = 30;
 
   AnimationController _currentTickAnimationController;
   Animation _currentTickAnimation;
@@ -225,6 +226,15 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
               if (rightBoundEpoch > nowEpoch) {
                 currentTickOffset = msToPx(rightBoundEpoch - nowEpoch);
               }
+
+              if (details.localPosition.dx > canvasSize.width - 60) {
+                // TODO: use quote bar width
+                verticalPadding -= details.delta.dy;
+                verticalPadding = verticalPadding.clamp(
+                  20.0,
+                  canvasSize.height / 2 - 20.0,
+                );
+              }
             });
           },
           onScaleUpdate: (details) {
@@ -254,8 +264,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
                 quoteGridInterval: 1,
                 timeGridInterval: intervalDuration * 30,
-                topPadding: 30,
-                bottomPadding: 60,
+                topPadding: verticalPadding,
+                bottomPadding: verticalPadding + 20,
               ),
             );
           }),
@@ -263,7 +273,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         if (rightBoundEpoch < nowEpoch)
           Positioned(
             bottom: 30,
-            right: 70,
+            right: 80,
             child: IconButton(
               icon: Icon(Icons.arrow_forward, color: Colors.white),
               onPressed: () {
@@ -491,7 +501,7 @@ class ChartPainter extends CustomPainter {
 
   void _paintArrow({Tick currentTick}) {
     final offset = _toCanvasOffset(currentTick);
-    canvas.drawCircle(offset, 3, Paint()..color = Colors.white);
+    canvas.drawCircle(offset, 3, Paint()..color = coralColor);
     canvas.drawLine(
       Offset(0, offset.dy),
       Offset(size.width, offset.dy),
