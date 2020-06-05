@@ -431,7 +431,7 @@ class ChartPainter extends CustomPainter {
         size.width,
         size.height,
       ),
-      Paint()..color = Color(0xFF0E0E0E),
+      Paint()..color = Color(0xFF0E0E0E).withOpacity(0.7),
     );
     gridLineQuotes.forEach((quote) {
       _paintQuoteGridValue(quote);
