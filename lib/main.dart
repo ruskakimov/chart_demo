@@ -368,11 +368,12 @@ class ChartPainter extends CustomPainter {
 
     final gridLineQuotes = _calcGridLineQuotes();
     final gridLineEpochs = _calcGridLineEpochs();
-    _paintQuoteGridLines(gridLineQuotes);
     _paintTimeGridLines(gridLineEpochs);
+    _paintQuoteGridLines(gridLineQuotes);
 
     _paintLine();
 
+    _paintTimeGridValues(gridLineEpochs);
     _paintQuoteGridValues(gridLineQuotes);
     _paintArrow(currentTick: animatedCurrentTick);
   }
@@ -484,6 +485,8 @@ class ChartPainter extends CustomPainter {
     });
   }
 
+  void _paintTimeGridValues(List<int> gridLineEpochs) {}
+
   void _paintQuoteGridValue(double quote) {
     TextSpan span = TextSpan(
       style: TextStyle(
@@ -494,12 +497,12 @@ class ChartPainter extends CustomPainter {
     );
     TextPainter tp = TextPainter(
       text: span,
-      textAlign: TextAlign.right,
-      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
     );
-    tp.layout();
+    tp.layout(minWidth: quoteBarWidth, maxWidth: quoteBarWidth);
     final y = _quoteToY(quote);
-    tp.paint(canvas, Offset(size.width - quoteBarWidth + 8, y - 6));
+    tp.paint(canvas, Offset(size.width - quoteBarWidth, y - 6));
   }
 
   void _paintArrow({Tick currentTick}) {
@@ -543,13 +546,13 @@ class ChartPainter extends CustomPainter {
     );
     TextPainter tp = TextPainter(
       text: span,
-      textAlign: TextAlign.end,
-      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
     );
-    tp.layout();
+    tp.layout(minWidth: quoteBarWidth, maxWidth: quoteBarWidth);
     tp.paint(
       canvas,
-      Offset(size.width - quoteBarWidth + 6, y - 6),
+      Offset(size.width - quoteBarWidth - 2, y - 6),
     );
   }
 
