@@ -43,6 +43,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   final int intervalDuration = 1000;
   final double maxCurrentTickOffset = 150;
+  final double quoteBarWidth = 60;
 
   List<Tick> ticks = [];
   List<Tick> visibleTicks = [];
@@ -227,9 +228,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 currentTickOffset = msToPx(rightBoundEpoch - nowEpoch);
               }
 
-              if (details.localPosition.dx > canvasSize.width - 60) {
-                // TODO: use quote bar width
-                verticalPadding -= details.delta.dy;
+              if (details.localPosition.dx > canvasSize.width - quoteBarWidth) {
+                verticalPadding += details.delta.dy;
                 verticalPadding = verticalPadding.clamp(
                   20.0,
                   canvasSize.height / 2 - 20.0,
@@ -266,6 +266,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 timeGridInterval: intervalDuration * 30,
                 topPadding: verticalPadding,
                 bottomPadding: verticalPadding + 20,
+                quoteBarWidth: quoteBarWidth,
               ),
             );
           }),
@@ -299,6 +300,7 @@ class ChartPainter extends CustomPainter {
     this.bottomBoundQuote,
     this.quoteGridInterval,
     this.timeGridInterval,
+    this.quoteBarWidth,
     this.topPadding,
     this.bottomPadding,
   });
@@ -308,7 +310,6 @@ class ChartPainter extends CustomPainter {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1;
   final coralColor = Color(0xFFFF444F);
-  final quoteBarWidth = 60.0;
 
   final List<Tick> ticks;
   final Tick animatedCurrentTick;
@@ -324,6 +325,8 @@ class ChartPainter extends CustomPainter {
 
   final double quoteGridInterval;
   final int timeGridInterval;
+
+  final double quoteBarWidth;
 
   final double topPadding;
   final double bottomPadding;
