@@ -377,7 +377,7 @@ class ChartPainter extends CustomPainter {
     _paintLine();
 
     _paintTimestamps(gridLineEpochs);
-    _paintQuoteGridValues(gridLineQuotes);
+    _paintQuotes(gridLineQuotes);
     _paintArrow(currentTick: animatedCurrentTick);
   }
 
@@ -473,9 +473,9 @@ class ChartPainter extends CustomPainter {
     });
   }
 
-  void _paintQuoteGridValues(List<double> gridLineQuotes) {
+  void _paintQuotes(List<double> gridLineQuotes) {
     gridLineQuotes.forEach((quote) {
-      _paintQuoteGridValue(quote);
+      _paintQuote(quote);
     });
   }
 
@@ -507,7 +507,7 @@ class ChartPainter extends CustomPainter {
     );
   }
 
-  void _paintQuoteGridValue(double quote) {
+  void _paintQuote(double quote) {
     TextSpan span = TextSpan(
       style: TextStyle(
         color: Colors.white30,
