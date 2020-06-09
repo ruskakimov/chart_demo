@@ -3,6 +3,7 @@ import 'dart:io' show WebSocket;
 import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -21,9 +22,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Color(0xFF0E0E0E),
-        body: Chart(),
+      home: Material(
+        color: Color(0xFF0E0E0E),
+        child: SizedBox.expand(
+          child: Chart(),
+        ),
       ),
     );
   }
@@ -373,7 +376,7 @@ class ChartPainter extends CustomPainter {
 
     _paintLine();
 
-    _paintTimeGridValues(gridLineEpochs);
+    _paintTimestamps(gridLineEpochs);
     _paintQuoteGridValues(gridLineQuotes);
     _paintArrow(currentTick: animatedCurrentTick);
   }
@@ -485,7 +488,33 @@ class ChartPainter extends CustomPainter {
     });
   }
 
-  void _paintTimeGridValues(List<int> gridLineEpochs) {}
+  void _paintTimestamps(List<int> gridLineEpochs) {
+    gridLineEpochs.forEach((epoch) {
+      _paintTimestamp(epoch);
+    });
+  }
+
+  void _paintTimestamp(int epoch) {
+    final time = DateTime.fromMillisecondsSinceEpoch(epoch);
+    final label = DateFormat('Hms').format(time);
+    TextSpan span = TextSpan(
+      style: TextStyle(
+        color: Colors.white30,
+        fontSize: 12,
+      ),
+      text: label,
+    );
+    TextPainter tp = TextPainter(
+      text: span,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+    tp.layout();
+    tp.paint(
+      canvas,
+      Offset(_epochToX(epoch) - tp.width / 2, size.height - tp.height - 2),
+    );
+  }
 
   void _paintQuoteGridValue(double quote) {
     TextSpan span = TextSpan(
@@ -552,7 +581,7 @@ class ChartPainter extends CustomPainter {
     tp.layout(minWidth: quoteBarWidth, maxWidth: quoteBarWidth);
     tp.paint(
       canvas,
-      Offset(size.width - quoteBarWidth - 2, y - 6),
+      Offset(size.width - quoteBarWidth, y - 6),
     );
   }
 
