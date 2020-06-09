@@ -47,6 +47,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   final int intervalDuration = 1000;
   final double maxCurrentTickOffset = 150;
   final double quoteBarWidth = 60;
+  final double timeBarHeight = 20;
 
   List<Tick> ticks = [];
   List<Tick> visibleTicks = [];
@@ -58,6 +59,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double currentTickOffset = 100;
   int panToCurrentAnimationStartEpoch;
   double verticalPadding = 30;
+  double quoteGridInterval = 1;
 
   AnimationController _currentTickAnimationController;
   Animation _currentTickAnimation;
@@ -126,7 +128,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
       if (rightBoundEpoch > prevEpoch) {
         rightBoundEpoch += elapsedMs; // autopanning
       }
-      recalculateQuoteBoundTargets();
+      if (canvasSize != null) {
+        _recalculateQuoteBoundTargets();
+        _recalculateQuoteGridInterval();
+      }
     });
   }
 
@@ -158,9 +163,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void recalculateQuoteBoundTargets() {
-    if (canvasSize == null) return;
-
+  void _recalculateQuoteBoundTargets() {
     final leftBoundEpoch = rightBoundEpoch - pxToMs(canvasSize.width);
     visibleTicks = ticks
         .where((tick) =>
@@ -191,6 +194,25 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     }
   }
 
+  void _recalculateQuoteGridInterval() {
+    final chartAreaHeight =
+        canvasSize.height - verticalPadding * 2 - timeBarHeight;
+    final quoteRange = topBoundQuoteTarget - bottomBoundQuoteTarget;
+    if (quoteRange == 0) return;
+
+    final k = chartAreaHeight / quoteRange;
+
+    double _distanceBetweenLines() => k * quoteGridInterval;
+
+    while (_distanceBetweenLines() < 100) {
+      quoteGridInterval *= 2;
+    }
+
+    while (_distanceBetweenLines() / 2 >= 100) {
+      quoteGridInterval /= 2;
+    }
+  }
+
   int pxToMs(double px) {
     return (px / intervalWidth * intervalDuration).toInt();
   }
@@ -199,7 +221,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     return ms / intervalDuration * intervalWidth;
   }
 
-  Tick _animateCurrentTick() {
+  Tick _getAnimatedCurrentTick() {
     if (ticks.length < 2) return null;
     final last = ticks[ticks.length - 1];
     final secondLast = ticks[ticks.length - 2];
@@ -243,7 +265,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           onScaleUpdate: (details) {
             setState(() {
               intervalWidth =
-                  (_prevIntervalWidth * details.scale).clamp(3.0, 50.0);
+                  (_prevIntervalWidth * details.scale).clamp(3.0, 30.0);
 
               if (rightBoundEpoch > nowEpoch) {
                 rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
@@ -257,7 +279,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
               size: Size.infinite,
               painter: ChartPainter(
                 ticks: visibleTicks,
-                animatedCurrentTick: _animateCurrentTick(),
+                animatedCurrentTick: _getAnimatedCurrentTick(),
                 endsWithCurrentTick:
                     visibleTicks.isNotEmpty && visibleTicks.last == ticks.last,
                 intervalDuration: intervalDuration,
@@ -265,10 +287,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 rightBoundEpoch: rightBoundEpoch,
                 topBoundQuote: _topBoundQuoteAnimationController.value,
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
-                quoteGridInterval: 1,
+                quoteGridInterval: quoteGridInterval,
                 timeGridInterval: intervalDuration * 30,
                 topPadding: verticalPadding,
-                bottomPadding: verticalPadding + 20,
+                bottomPadding: verticalPadding + timeBarHeight,
                 quoteBarWidth: quoteBarWidth,
               ),
             );
@@ -429,7 +451,7 @@ class ChartPainter extends CustomPainter {
     final topEdgeQuote = topBoundQuote + topPadding * pixelToQuote;
     final bottomEdgeQuote = bottomBoundQuote - bottomPadding * pixelToQuote;
     final gridLineQuotes = <double>[];
-    for (var q = topEdgeQuote.ceilToDouble();
+    for (var q = topEdgeQuote - topEdgeQuote % quoteGridInterval;
         q > bottomEdgeQuote;
         q -= quoteGridInterval) {
       if (q < topEdgeQuote) gridLineQuotes.add(q);
@@ -503,7 +525,7 @@ class ChartPainter extends CustomPainter {
     tp.layout();
     tp.paint(
       canvas,
-      Offset(_epochToX(epoch) - tp.width / 2, size.height - tp.height - 2),
+      Offset(_epochToX(epoch) - tp.width / 2, size.height - tp.height - 4),
     );
   }
 
