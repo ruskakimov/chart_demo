@@ -300,8 +300,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         ),
         if (rightBoundEpoch < nowEpoch)
           Positioned(
-            bottom: 30,
-            right: 80,
+            bottom: 30 + timeBarHeight,
+            right: 30 + quoteBarWidth,
             child: IconButton(
               icon: Icon(Icons.arrow_forward, color: Colors.white),
               onPressed: () {
