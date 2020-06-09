@@ -474,15 +474,6 @@ class ChartPainter extends CustomPainter {
   }
 
   void _paintQuoteGridValues(List<double> gridLineQuotes) {
-    canvas.drawRect(
-      Rect.fromLTRB(
-        size.width - quoteBarWidth,
-        0,
-        size.width,
-        size.height,
-      ),
-      Paint()..color = Color(0xFF0E0E0E).withOpacity(0.7),
-    );
     gridLineQuotes.forEach((quote) {
       _paintQuoteGridValue(quote);
     });
