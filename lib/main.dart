@@ -58,7 +58,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double _prevIntervalWidth;
   double currentTickOffset = 100;
   int panToCurrentAnimationStartEpoch;
-  double verticalPadding = 30;
+  double verticalPaddingHeightPercentage = 0.1;
   double quoteGridInterval = 1;
 
   AnimationController _currentTickAnimationController;
@@ -196,19 +196,19 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   void _recalculateQuoteGridInterval() {
     final chartAreaHeight =
-        canvasSize.height - verticalPadding * 2 - timeBarHeight;
+        canvasSize.height - _verticalPadding * 2 - timeBarHeight;
     final quoteRange = topBoundQuoteTarget - bottomBoundQuoteTarget;
-    if (quoteRange == 0) return;
+    if (quoteRange <= 0) return;
 
     final k = chartAreaHeight / quoteRange;
 
     double _distanceBetweenLines() => k * quoteGridInterval;
 
-    while (_distanceBetweenLines() < 100) {
+    if (_distanceBetweenLines() < 100) {
+      print('<100, $k $quoteGridInterval');
       quoteGridInterval *= 2;
-    }
-
-    while (_distanceBetweenLines() / 2 >= 100) {
+    } else if (_distanceBetweenLines() / 2 >= 100) {
+      print('>=100, $k $quoteGridInterval');
       quoteGridInterval /= 2;
     }
   }
@@ -235,6 +235,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     );
   }
 
+  double get _verticalPadding =>
+      verticalPaddingHeightPercentage * (canvasSize.height - timeBarHeight);
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -254,11 +257,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
               }
 
               if (details.localPosition.dx > canvasSize.width - quoteBarWidth) {
-                verticalPadding += details.delta.dy;
-                verticalPadding = verticalPadding.clamp(
-                  20.0,
-                  canvasSize.height / 2 - 20.0,
-                );
+                verticalPaddingHeightPercentage =
+                    ((_verticalPadding + details.delta.dy) /
+                            (canvasSize.height - timeBarHeight))
+                        .clamp(0.05, 0.49);
               }
             });
           },
@@ -289,8 +291,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
                 quoteGridInterval: quoteGridInterval,
                 timeGridInterval: intervalDuration * 30,
-                topPadding: verticalPadding,
-                bottomPadding: verticalPadding + timeBarHeight,
+                topPadding: _verticalPadding,
+                bottomPadding: _verticalPadding + timeBarHeight,
                 quoteBarWidth: quoteBarWidth,
               ),
             );
