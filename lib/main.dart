@@ -300,16 +300,22 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           Positioned(
             bottom: 30 + timeBarHeight,
             right: 30 + quoteBarWidth,
-            child: IconButton(
-              icon: Icon(Icons.arrow_forward, color: Colors.white),
-              onPressed: () {
-                rightBoundEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
-                currentTickOffset = maxCurrentTickOffset;
-              },
-            ),
+            child: _buildScrollToNowButton(),
           )
       ],
     );
+  }
+
+  IconButton _buildScrollToNowButton() {
+    return IconButton(
+      icon: Icon(Icons.arrow_forward, color: Colors.white),
+      onPressed: _scrollToNow,
+    );
+  }
+
+  void _scrollToNow() {
+    rightBoundEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
+    currentTickOffset = maxCurrentTickOffset;
   }
 }
 
@@ -401,12 +407,6 @@ class ChartPainter extends CustomPainter {
     _paintTimestamps(gridLineEpochs);
     _paintQuotes(gridLineQuotes);
     _paintArrow(currentTick: animatedCurrentTick);
-  }
-
-  void _paintNowX__forTesting() {
-    final nowX = _epochToX(DateTime.now().millisecondsSinceEpoch);
-    canvas.drawLine(Offset(nowX, 0), Offset(nowX, size.height),
-        Paint()..color = Colors.yellow);
   }
 
   void _paintLine() {
