@@ -9,21 +9,21 @@ class ScaleAndPanGestureDetector extends StatefulWidget {
   const ScaleAndPanGestureDetector({
     Key key,
     this.child,
-    this.onScaleOrPanStart,
+    this.onScaleAndPanStart,
     this.onScaleUpdate,
     this.onPanUpdate,
-    this.onScaleOrPanEnd,
+    this.onScaleAndPanEnd,
   }) : super(key: key);
 
   final Widget child;
 
-  final GestureScaleStartCallback onScaleOrPanStart;
+  final GestureScaleStartCallback onScaleAndPanStart;
 
   final GestureScaleUpdateCallback onScaleUpdate;
 
   final GestureDragUpdateCallback onPanUpdate;
 
-  final GestureScaleEndCallback onScaleOrPanEnd;
+  final GestureScaleEndCallback onScaleAndPanEnd;
 
   @override
   _ScaleAndPanGestureDetectorState createState() =>
@@ -58,7 +58,8 @@ class _ScaleAndPanGestureDetectorState
 
   void _handleScaleStart(ScaleStartDetails details) {
     _lastContactPoint = details.focalPoint;
-    widget.onScaleOrPanStart?.call(details);
+
+    widget.onScaleAndPanStart?.call(details);
   }
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
@@ -76,12 +77,12 @@ class _ScaleAndPanGestureDetectorState
       globalPosition: currentContactPoint,
       localPosition: details.localFocalPoint,
     );
+    _lastContactPoint = details.focalPoint;
 
     widget.onPanUpdate?.call(dragUpdateDetails);
-    _lastContactPoint = details.focalPoint;
   }
 
   void _handleScaleEnd(ScaleEndDetails details) {
-    widget.onScaleOrPanEnd?.call(details);
+    widget.onScaleAndPanEnd?.call(details);
   }
 }

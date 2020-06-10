@@ -245,7 +245,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     return Stack(
       children: <Widget>[
         ScaleAndPanGestureDetector(
-          onScaleOrPanStart: (details) {
+          onScaleAndPanStart: (details) {
             _prevIntervalWidth = intervalWidth;
           },
           onPanUpdate: (details) {
