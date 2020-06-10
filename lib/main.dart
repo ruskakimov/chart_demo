@@ -103,7 +103,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           onDone: () => print('Done!'),
           onError: (e) => throw new Exception(e),
         );
-        ws.add(json.encode({'ticks': 'frxAUDJPY'}));
+        ws.add(json.encode({'ticks': 'OTC_AS51'}));
       }
     } catch (e) {
       ws?.close();
@@ -129,6 +129,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
         rightBoundEpoch += elapsedMs; // autopanning
       }
       if (canvasSize != null) {
+        _updateVisibleTicks();
         _recalculateQuoteBoundTargets();
         _recalculateQuoteGridInterval();
       }
@@ -163,14 +164,21 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _recalculateQuoteBoundTargets() {
+  void _updateVisibleTicks() {
     final leftBoundEpoch = rightBoundEpoch - pxToMs(canvasSize.width);
-    visibleTicks = ticks
-        .where((tick) =>
-            tick.epoch <= rightBoundEpoch + intervalDuration * 2 &&
-            tick.epoch >= leftBoundEpoch - intervalDuration * 2)
-        .toList();
 
+    var start = ticks.indexWhere((tick) => leftBoundEpoch < tick.epoch);
+    var end = ticks.lastIndexWhere((tick) => tick.epoch < rightBoundEpoch);
+
+    if (start == -1 || end == -1) return;
+
+    if (start > 0) start -= 1;
+    if (end < ticks.length - 1) end += 1;
+
+    visibleTicks = ticks.sublist(start, end + 1);
+  }
+
+  void _recalculateQuoteBoundTargets() {
     if (visibleTicks.isEmpty) return;
 
     final visibleTickQuotes = visibleTicks.map((tick) => tick.quote);
