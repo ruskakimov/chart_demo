@@ -94,8 +94,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
       if (ws?.readyState == WebSocket.open) {
         ws.listen(
-          (resposne) {
-            final data = Map<String, dynamic>.from(json.decode(resposne));
+          (response) {
+            final data = Map<String, dynamic>.from(json.decode(response));
             final epoch = data['tick']['epoch'] * 1000;
             final quote = data['tick']['quote'];
             _onNewTick(epoch, quote.toDouble());
@@ -205,10 +205,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     double _distanceBetweenLines() => k * quoteGridInterval;
 
     if (_distanceBetweenLines() < 100) {
-      print('<100, $k $quoteGridInterval');
       quoteGridInterval *= 2;
     } else if (_distanceBetweenLines() / 2 >= 100) {
-      print('>=100, $k $quoteGridInterval');
       quoteGridInterval /= 2;
     }
   }
