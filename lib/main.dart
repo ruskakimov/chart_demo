@@ -103,7 +103,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           onDone: () => print('Done!'),
           onError: (e) => throw new Exception(e),
         );
-        ws.add(json.encode({'ticks': 'R_100'}));
+        ws.add(json.encode({'ticks': 'frxAUDJPY'}));
       }
     } catch (e) {
       ws?.close();
