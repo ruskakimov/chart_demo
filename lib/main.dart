@@ -221,15 +221,19 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   Tick _getAnimatedCurrentTick() {
     if (ticks.length < 2) return null;
-    final last = ticks[ticks.length - 1];
-    final secondLast = ticks[ticks.length - 2];
+
+    final lastTick = ticks[ticks.length - 1];
+    final secondLastTick = ticks[ticks.length - 2];
+
+    final epochDiff = lastTick.epoch - secondLastTick.epoch;
+    final quoteDiff = lastTick.quote - secondLastTick.quote;
+
+    final animatedEpochDiff = (epochDiff * _currentTickAnimation.value).toInt();
+    final animatedQuoteDiff = quoteDiff * _currentTickAnimation.value;
 
     return Tick(
-      (secondLast.epoch +
-              (last.epoch - secondLast.epoch) * _currentTickAnimation.value)
-          .toInt(),
-      secondLast.quote +
-          (last.quote - secondLast.quote) * _currentTickAnimation.value,
+      secondLastTick.epoch + animatedEpochDiff,
+      secondLastTick.quote + animatedQuoteDiff,
     );
   }
 
