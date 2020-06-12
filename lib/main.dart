@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
-import 'scale_and_pan_gesture_detector.dart';
 import 'chart_painter.dart';
+import 'models/tick.dart';
+import 'scale_and_pan_gesture_detector.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
+import 'models/tick.dart';
+
 class ChartPainter extends CustomPainter {
   ChartPainter({
     this.ticks,
@@ -294,11 +296,4 @@ class ChartPainter extends CustomPainter {
 
   @override
   bool shouldRebuildSemantics(ChartPainter oldDelegate) => false;
-}
-
-class Tick {
-  final int epoch;
-  final double quote;
-
-  Tick(this.epoch, this.quote);
 }
