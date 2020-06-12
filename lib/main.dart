@@ -203,8 +203,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   }
 
   void _recalculateQuoteGridInterval() {
-    final chartAreaHeight =
-        canvasSize.height - _verticalPadding * 2 - timeBarHeight;
+    final chartAreaHeight = canvasSize.height - _topPadding - _bottomPadding;
     final quoteRange = topBoundQuoteTarget - bottomBoundQuoteTarget;
     if (quoteRange <= 0) return;
 
@@ -247,6 +246,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   double get _verticalPadding =>
       verticalPaddingHeightPercentage * (canvasSize.height - timeBarHeight);
+
+  double get _topPadding => _verticalPadding;
+
+  double get _bottomPadding => _verticalPadding + timeBarHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -301,8 +304,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
                 quoteGridInterval: quoteGridInterval,
                 timeGridInterval: intervalDuration * 30,
-                topPadding: _verticalPadding,
-                bottomPadding: _verticalPadding + timeBarHeight,
+                topPadding: _topPadding,
+                bottomPadding: _bottomPadding,
                 quoteBarWidth: quoteBarWidth,
               ),
             );
