@@ -8,8 +8,7 @@ class ChartPainter extends CustomPainter {
     this.ticks,
     this.animatedCurrentTick,
     this.endsWithCurrentTick,
-    this.intervalDuration,
-    this.intervalWidth,
+    this.msInOnePx,
     this.rightBoundEpoch,
     this.topBoundQuote,
     this.bottomBoundQuote,
@@ -30,8 +29,7 @@ class ChartPainter extends CustomPainter {
   final Tick animatedCurrentTick;
   final bool endsWithCurrentTick;
 
-  final int intervalDuration;
-  final double intervalWidth;
+  final double msInOnePx;
 
   /// Epoch at x = size.width.
   final int rightBoundEpoch;
@@ -68,9 +66,8 @@ class ChartPainter extends CustomPainter {
   }
 
   double _epochToX(int epoch) {
-    final intervalsFromRightBound =
-        (rightBoundEpoch - epoch) / intervalDuration;
-    return size.width - intervalsFromRightBound * intervalWidth;
+    final msFromRightBound = rightBoundEpoch - epoch;
+    return size.width - msFromRightBound / msInOnePx;
   }
 
   double _quoteToY(double quote) {
@@ -155,10 +152,9 @@ class ChartPainter extends CustomPainter {
   }
 
   List<int> _calcGridLineEpochs() {
-    final pixelToEpoch = intervalDuration / intervalWidth;
     final firstRight =
         (rightBoundEpoch - rightBoundEpoch % timeGridInterval).toInt();
-    final leftBoundEpoch = rightBoundEpoch - size.width * pixelToEpoch;
+    final leftBoundEpoch = rightBoundEpoch - size.width * msInOnePx;
     final epochs = <int>[];
     for (int epoch = firstRight;
         epoch > leftBoundEpoch;
