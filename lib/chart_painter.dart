@@ -31,6 +31,7 @@ class ChartPainter extends CustomPainter {
   final Tick animatedCurrentTick;
   final bool endsWithCurrentTick;
 
+  /// Time axis scale value. Duration in milliseconds of one pixel along the time axis.
   final double msInOnePx;
 
   /// Epoch at x = size.width.
@@ -45,16 +46,16 @@ class ChartPainter extends CustomPainter {
   /// Difference between two consecutive quote labels.
   final double quoteGridInterval;
 
-  /// Difference between two consecutive time labels in ms.
+  /// Difference between two consecutive time labels in milliseconds.
   final int timeGridInterval;
 
   /// Width of the area where quote labels and current tick arrow are painted.
   final double quoteLabelsAreaWidth;
 
-  /// Distance between top edge and [topBoundQuote] in px.
+  /// Distance between top edge and [topBoundQuote] in pixels.
   final double topPadding;
 
-  /// Distance between bottom edge and [bottomBoundQuote] in px.
+  /// Distance between bottom edge and [bottomBoundQuote] in pixels.
   final double bottomPadding;
 
   Canvas canvas;
