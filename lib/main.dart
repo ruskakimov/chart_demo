@@ -46,8 +46,9 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   final int intervalDuration = 1000;
   final double maxCurrentTickOffset = 150;
-  final double quoteBarWidth = 60;
-  final double timeBarHeight = 20;
+
+  final double quoteLabelsAreaWidth = 60;
+  final double timeLabelsAreaHeight = 20;
 
   List<Tick> ticks = [];
   List<Tick> visibleTicks = [];
@@ -58,7 +59,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   double _prevIntervalWidth;
   double currentTickOffset = 100;
   int panToCurrentAnimationStartEpoch;
-  double verticalPaddingHeightPercentage = 0.1;
+  double verticalPaddingFraction = 0.1;
   double quoteGridInterval = 1;
 
   AnimationController _currentTickAnimationController;
@@ -245,11 +246,11 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   }
 
   double get _verticalPadding =>
-      verticalPaddingHeightPercentage * (canvasSize.height - timeBarHeight);
+      verticalPaddingFraction * (canvasSize.height - timeLabelsAreaHeight);
 
   double get _topPadding => _verticalPadding;
 
-  double get _bottomPadding => _verticalPadding + timeBarHeight;
+  double get _bottomPadding => _verticalPadding + timeLabelsAreaHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -269,10 +270,11 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 currentTickOffset = msToPx(rightBoundEpoch - nowEpoch);
               }
 
-              if (details.localPosition.dx > canvasSize.width - quoteBarWidth) {
-                verticalPaddingHeightPercentage =
+              if (details.localPosition.dx >
+                  canvasSize.width - quoteLabelsAreaWidth) {
+                verticalPaddingFraction =
                     ((_verticalPadding + details.delta.dy) /
-                            (canvasSize.height - timeBarHeight))
+                            (canvasSize.height - timeLabelsAreaHeight))
                         .clamp(0.05, 0.49);
               }
             });
@@ -306,15 +308,15 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 timeGridInterval: intervalDuration * 30,
                 topPadding: _topPadding,
                 bottomPadding: _bottomPadding,
-                quoteBarWidth: quoteBarWidth,
+                quoteLabelsAreaWidth: quoteLabelsAreaWidth,
               ),
             );
           }),
         ),
         if (rightBoundEpoch < nowEpoch)
           Positioned(
-            bottom: 30 + timeBarHeight,
-            right: 30 + quoteBarWidth,
+            bottom: 30 + timeLabelsAreaHeight,
+            right: 30 + quoteLabelsAreaWidth,
             child: _buildScrollToNowButton(),
           )
       ],
@@ -346,7 +348,7 @@ class ChartPainter extends CustomPainter {
     this.bottomBoundQuote,
     this.quoteGridInterval,
     this.timeGridInterval,
-    this.quoteBarWidth,
+    this.quoteLabelsAreaWidth,
     this.topPadding,
     this.bottomPadding,
   });
@@ -364,17 +366,28 @@ class ChartPainter extends CustomPainter {
   final int intervalDuration;
   final double intervalWidth;
 
+  /// Epoch at x = size.width.
   final int rightBoundEpoch;
 
+  /// Quote at y = [topPadding].
   final double topBoundQuote;
+
+  /// Quote at y = size.height - [bottomPadding].
   final double bottomBoundQuote;
 
+  /// Difference between two consecutive quote labels.
   final double quoteGridInterval;
+
+  /// Difference between two consecutive time labels in ms.
   final int timeGridInterval;
 
-  final double quoteBarWidth;
+  /// Width of the area where quote labels and current tick arrow are painted.
+  final double quoteLabelsAreaWidth;
 
+  /// Distance between top edge and [topBoundQuote] in px.
   final double topPadding;
+
+  /// Distance between bottom edge and [bottomBoundQuote] in px.
   final double bottomPadding;
 
   Canvas canvas;
@@ -557,9 +570,9 @@ class ChartPainter extends CustomPainter {
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
     );
-    tp.layout(minWidth: quoteBarWidth, maxWidth: quoteBarWidth);
+    tp.layout(minWidth: quoteLabelsAreaWidth, maxWidth: quoteLabelsAreaWidth);
     final y = _quoteToY(quote);
-    tp.paint(canvas, Offset(size.width - quoteBarWidth, y - 6));
+    tp.paint(canvas, Offset(size.width - quoteLabelsAreaWidth, y - 6));
   }
 
   void _paintArrow({Tick currentTick}) {
@@ -580,12 +593,12 @@ class ChartPainter extends CustomPainter {
     final height = 24;
 
     final path = Path();
-    path.moveTo(size.width - quoteBarWidth - triangleWidth, y);
-    path.lineTo(size.width - quoteBarWidth, y - height / 2);
+    path.moveTo(size.width - quoteLabelsAreaWidth - triangleWidth, y);
+    path.lineTo(size.width - quoteLabelsAreaWidth, y - height / 2);
     path.lineTo(size.width, y - height / 2);
     path.lineTo(size.width, y + height / 2);
-    path.lineTo(size.width - quoteBarWidth, y + height / 2);
-    path.lineTo(size.width - quoteBarWidth - triangleWidth, y);
+    path.lineTo(size.width - quoteLabelsAreaWidth, y + height / 2);
+    path.lineTo(size.width - quoteLabelsAreaWidth - triangleWidth, y);
     canvas.drawPath(
       path,
       Paint()
@@ -606,10 +619,10 @@ class ChartPainter extends CustomPainter {
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
     );
-    tp.layout(minWidth: quoteBarWidth, maxWidth: quoteBarWidth);
+    tp.layout(minWidth: quoteLabelsAreaWidth, maxWidth: quoteLabelsAreaWidth);
     tp.paint(
       canvas,
-      Offset(size.width - quoteBarWidth, y - 6),
+      Offset(size.width - quoteLabelsAreaWidth, y - 6),
     );
   }
 
