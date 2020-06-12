@@ -113,7 +113,10 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
 
   void _onNewTick(int epoch, double quote) {
     setState(() {
-      ticks.add(Tick(epoch, quote));
+      ticks.add(Tick(
+        epoch: epoch,
+        quote: quote,
+      ));
     });
 
     _currentTickAnimationController.reset();
@@ -239,8 +242,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     final animatedQuoteDiff = quoteDiff * _currentTickAnimation.value;
 
     return Tick(
-      secondLastTick.epoch + animatedEpochDiff,
-      secondLastTick.quote + animatedQuoteDiff,
+      epoch: secondLastTick.epoch + animatedEpochDiff,
+      quote: secondLastTick.quote + animatedQuoteDiff,
     );
   }
 
