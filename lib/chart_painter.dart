@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 import 'models/tick.dart';
+import 'logic/convertion.dart';
 
 class ChartPainter extends CustomPainter {
   ChartPainter({
@@ -68,11 +69,25 @@ class ChartPainter extends CustomPainter {
     );
   }
 
+  // epoch
+  // size.width
+  // rightBoundEpoch
+  // msInOnePx
   double _epochToX(int epoch) {
-    final msFromRightBound = rightBoundEpoch - epoch;
-    return size.width - msFromRightBound / msInOnePx;
+    return epochToCanvasX(
+      epoch: epoch,
+      canvasWidthEpoch: rightBoundEpoch,
+      canvasWidth: size.width,
+      msPerPx: msInOnePx,
+    );
   }
 
+  // quote
+  // topBoundQuote
+  // bottomBoundQuote
+  // size.height
+  // topPadding
+  // bottomPadding
   double _quoteToY(double quote) {
     final quoteBoundRange = topBoundQuote - bottomBoundQuote;
     if (quoteBoundRange == 0) return size.height / 2;
