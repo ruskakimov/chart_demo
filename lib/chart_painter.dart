@@ -11,7 +11,7 @@ class ChartPainter extends CustomPainter {
     this.ticks,
     this.animatedCurrentTick,
     this.endsWithCurrentTick,
-    this.msInOnePx,
+    this.msPerPx,
     this.rightBoundEpoch,
     this.topBoundQuote,
     this.bottomBoundQuote,
@@ -33,7 +33,7 @@ class ChartPainter extends CustomPainter {
   final bool endsWithCurrentTick;
 
   /// Time axis scale value. Duration in milliseconds of one pixel along the time axis.
-  final double msInOnePx;
+  final double msPerPx;
 
   /// Epoch at x = size.width.
   final int rightBoundEpoch;
@@ -74,7 +74,7 @@ class ChartPainter extends CustomPainter {
       epoch: epoch,
       rightBoundEpoch: rightBoundEpoch,
       canvasWidth: size.width,
-      msPerPx: msInOnePx,
+      msPerPx: msPerPx,
     );
   }
 
@@ -166,7 +166,7 @@ class ChartPainter extends CustomPainter {
     final firstRight =
         (rightBoundEpoch - rightBoundEpoch % timeGridInterval).toInt();
     final leftBoundEpoch =
-        rightBoundEpoch - pxToMs(size.width, msPerPx: msInOnePx);
+        rightBoundEpoch - pxToMs(size.width, msPerPx: msPerPx);
     final epochs = <int>[];
     for (int epoch = firstRight;
         epoch > leftBoundEpoch;

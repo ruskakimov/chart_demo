@@ -302,7 +302,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                 animatedCurrentTick: _getAnimatedCurrentTick(),
                 endsWithCurrentTick:
                     visibleTicks.isNotEmpty && visibleTicks.last == ticks.last,
-                msInOnePx: intervalDuration / intervalWidth,
+                msPerPx: intervalDuration / intervalWidth,
                 rightBoundEpoch: rightBoundEpoch,
                 topBoundQuote: _topBoundQuoteAnimationController.value,
                 bottomBoundQuote: _bottomBoundQuoteAnimationController.value,
