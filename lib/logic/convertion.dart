@@ -4,6 +4,10 @@ double msToPx(int ms, {@required double msPerPx}) {
   return ms / msPerPx;
 }
 
+int pxToMs(double px, {@required double msPerPx}) {
+  return (px * msPerPx).toInt();
+}
+
 double epochToCanvasX({
   @required int epoch,
   @required int rightBoundEpoch,

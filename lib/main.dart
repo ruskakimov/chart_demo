@@ -79,7 +79,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     _initTickStream();
 
     nowEpoch = DateTime.now().millisecondsSinceEpoch;
-    rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
+    rightBoundEpoch = nowEpoch + _pxToMs(currentTickOffset);
 
     ticker = this.createTicker(_onNewFrame);
     ticker.start();
@@ -169,7 +169,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   }
 
   void _updateVisibleTicks() {
-    final leftBoundEpoch = rightBoundEpoch - pxToMs(canvasSize.width);
+    final leftBoundEpoch = rightBoundEpoch - _pxToMs(canvasSize.width);
 
     var start = ticks.indexWhere((tick) => leftBoundEpoch < tick.epoch);
     var end = ticks.lastIndexWhere((tick) => tick.epoch < rightBoundEpoch);
@@ -222,8 +222,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     }
   }
 
-  int pxToMs(double px) {
-    return (px / intervalWidth * intervalDuration).toInt();
+  int _pxToMs(double px) {
+    return pxToMs(px, msPerPx: intervalDuration / intervalWidth);
   }
 
   double _msToPx(int ms) {
@@ -265,8 +265,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
           },
           onPanUpdate: (details) {
             setState(() {
-              rightBoundEpoch -= pxToMs(details.delta.dx);
-              final upperLimit = nowEpoch + pxToMs(maxCurrentTickOffset);
+              rightBoundEpoch -= _pxToMs(details.delta.dx);
+              final upperLimit = nowEpoch + _pxToMs(maxCurrentTickOffset);
               rightBoundEpoch = rightBoundEpoch.clamp(0, upperLimit);
 
               if (rightBoundEpoch > nowEpoch) {
@@ -288,7 +288,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
                   (_prevIntervalWidth * details.scale).clamp(3.0, 30.0);
 
               if (rightBoundEpoch > nowEpoch) {
-                rightBoundEpoch = nowEpoch + pxToMs(currentTickOffset);
+                rightBoundEpoch = nowEpoch + _pxToMs(currentTickOffset);
               }
             });
           },
@@ -333,7 +333,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
   }
 
   void _scrollToNow() {
-    rightBoundEpoch = nowEpoch + pxToMs(maxCurrentTickOffset);
+    rightBoundEpoch = nowEpoch + _pxToMs(maxCurrentTickOffset);
     currentTickOffset = maxCurrentTickOffset;
   }
 }

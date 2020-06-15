@@ -165,7 +165,8 @@ class ChartPainter extends CustomPainter {
   List<int> _calcGridLineEpochs() {
     final firstRight =
         (rightBoundEpoch - rightBoundEpoch % timeGridInterval).toInt();
-    final leftBoundEpoch = rightBoundEpoch - size.width * msInOnePx;
+    final leftBoundEpoch =
+        rightBoundEpoch - pxToMs(size.width, msPerPx: msInOnePx);
     final epochs = <int>[];
     for (int epoch = firstRight;
         epoch > leftBoundEpoch;

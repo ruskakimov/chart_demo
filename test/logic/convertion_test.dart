@@ -12,6 +12,15 @@ void main() {
     });
   });
 
+  group('pxToMs should return', () {
+    test('32 when [px == 16] and [msPerPx == 2]', () {
+      expect(
+        pxToMs(16, msPerPx: 2),
+        equals(32),
+      );
+    });
+  });
+
   group('epochToCanvasX should return', () {
     test('[canvasWidth] when [epoch == rightBoundEpoch]', () {
       expect(
