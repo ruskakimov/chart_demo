@@ -69,10 +69,6 @@ class ChartPainter extends CustomPainter {
     );
   }
 
-  // epoch
-  // size.width
-  // rightBoundEpoch
-  // msInOnePx
   double _epochToX(int epoch) {
     return epochToCanvasX(
       epoch: epoch,
@@ -82,18 +78,15 @@ class ChartPainter extends CustomPainter {
     );
   }
 
-  // quote
-  // topBoundQuote
-  // bottomBoundQuote
-  // size.height
-  // topPadding
-  // bottomPadding
   double _quoteToY(double quote) {
-    final quoteBoundRange = topBoundQuote - bottomBoundQuote;
-    if (quoteBoundRange == 0) return size.height / 2;
-    final boundFraction = (quote - bottomBoundQuote) / quoteBoundRange;
-    return topPadding +
-        (size.height - topPadding - bottomPadding) * (1 - boundFraction);
+    return quoteToCanvasY(
+      quote: quote,
+      topBoundQuote: topBoundQuote,
+      bottomBoundQuote: bottomBoundQuote,
+      canvasHeight: size.height,
+      topPadding: topPadding,
+      bottomPadding: bottomPadding,
+    );
   }
 
   @override
