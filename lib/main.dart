@@ -2,6 +2,7 @@ import 'dart:convert' show json;
 import 'dart:io' show WebSocket;
 import 'dart:math';
 
+import 'package:chart_attempt/logic/convertion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -225,8 +226,8 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
     return (px / intervalWidth * intervalDuration).toInt();
   }
 
-  double msToPx(int ms) {
-    return ms / intervalDuration * intervalWidth;
+  double _msToPx(int ms) {
+    return msToPx(ms, msPerPx: intervalDuration / intervalWidth);
   }
 
   Tick _getAnimatedCurrentTick() {
@@ -269,7 +270,7 @@ class _ChartState extends State<Chart> with TickerProviderStateMixin {
               rightBoundEpoch = rightBoundEpoch.clamp(0, upperLimit);
 
               if (rightBoundEpoch > nowEpoch) {
-                currentTickOffset = msToPx(rightBoundEpoch - nowEpoch);
+                currentTickOffset = _msToPx(rightBoundEpoch - nowEpoch);
               }
 
               if (details.localPosition.dx >

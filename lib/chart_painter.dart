@@ -72,7 +72,7 @@ class ChartPainter extends CustomPainter {
   double _epochToX(int epoch) {
     return epochToCanvasX(
       epoch: epoch,
-      canvasWidthEpoch: rightBoundEpoch,
+      rightBoundEpoch: rightBoundEpoch,
       canvasWidth: size.width,
       msPerPx: msInOnePx,
     );

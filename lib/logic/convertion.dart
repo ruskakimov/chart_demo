@@ -1,12 +1,17 @@
 import 'package:meta/meta.dart';
 
+double msToPx(int ms, {@required double msPerPx}) {
+  return ms / msPerPx;
+}
+
 double epochToCanvasX({
   @required int epoch,
-  @required int canvasWidthEpoch,
+  @required int rightBoundEpoch,
   @required double canvasWidth,
   @required double msPerPx,
 }) {
-  return canvasWidth - (canvasWidthEpoch - epoch) / msPerPx;
+  final pxFromRight = msToPx(rightBoundEpoch - epoch, msPerPx: msPerPx);
+  return canvasWidth - pxFromRight;
 }
 
 double quoteToCanvasY({
